@@ -496,6 +496,7 @@ public abstract class HttpURLConnection extends URLConnection {
         return method;
     }
 
+    // 数字响应码
     /**
      * Gets the status code from an HTTP response message.
      * For example, in the case of the following status lines:
@@ -576,6 +577,7 @@ public abstract class HttpURLConnection extends URLConnection {
         return -1;
     }
 
+    // 响应消息
     /**
      * Gets the HTTP response message, if any, returned along with the
      * response code from a server.  From responses like:
@@ -616,6 +618,7 @@ public abstract class HttpURLConnection extends URLConnection {
      */
     public abstract void disconnect();
 
+    // 是否通过代理服务器
     /**
      * Indicates if the connection is going through a proxy.
      * @return a boolean indicating if the connection is
@@ -642,6 +645,9 @@ public abstract class HttpURLConnection extends URLConnection {
         return permission;
     }
 
+    // 有些情况下，服务器可能遇到一个错误，但仍会在消息主体中返回有用的消息，例如网站请求不存在的页面时，服务器并不是简单返回404错误码
+    // 而是一个搜索页面，帮助用户确定缺少的页面可能在哪里
+    // 一般getInputStream失败后，会在catch块中调用getErrorStream，如果出于某种原因读取失败，就会读取错误流
    /**
     * Returns the error stream if the connection failed
     * but the server sent useful data nonetheless. The

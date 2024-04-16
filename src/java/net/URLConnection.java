@@ -156,6 +156,8 @@ import sun.security.util.SecurityConstants;
  * @since 1.0
  */
 // URL资源连接的公共父类
+// 指向URL指定资源的活动连接，与URL相比，它对与服务器的交互提供了更多控制，可以检查服务器发送的首部，并做出响应，可以设置请求服务器的首部，
+// 可以用POST、PUT、其他HTTP方法向服务器发送数据
 public abstract class URLConnection {
     
     private static final String contentClassPrefix = "sun.net.www.content";
@@ -196,6 +198,7 @@ public abstract class URLConnection {
      * @see java.net.URLConnection#url
      */
     // 指向资源的URL
+    // 构造函数会在创建URLConnection时设置这个字段，此后不能再改变
     protected URL url;
     
     /**
@@ -210,6 +213,10 @@ public abstract class URLConnection {
      * the communications link has been established.
      */
     // 是否已建立连接
+    // 如果连接关闭则字段为false，由于在创建一个新的URLConnection对象时连接尚未打开，所以其初始值为false
+    // 任何导致URLConnection连接的方法都会将该变量设置为true，connect()、getInputstream、getOutputstream
+    // 任何导致URLConnection断开连接的方法会将该变量设置为false，例如子类HttpURLConnection的disconnect()方法
+    // 如果要派生URLConnection子类来编写一个协议处理器，需要在连接时将该变量设置为true，在连接关闭时将该变量设置为false
     protected boolean connected = false;
     
     /**
@@ -242,6 +249,7 @@ public abstract class URLConnection {
      * @see java.net.URLConnection#setDoOutput(boolean)
      */
     // 是否允许向当前URL资源连接写入数据，默认为false；在某些协议的URL下，需要使用该参数做限制
+    // 如果程序需要使用POST方法向服务器发送数据，可以通过从URLConnection获取输出流来完成
     protected boolean doOutput = false;
     
     /**
@@ -262,7 +270,9 @@ public abstract class URLConnection {
      * @see java.net.URLConnection#setDefaultAllowUserInteraction(boolean)
      */
     protected boolean allowUserInteraction = defaultAllowUserInteraction;
-    
+
+    // false会绕过本地缓存，重新从服务器下载文件
+    // 如果有缓存，该变量确定了是否可以使用缓存，默认值为true，表示将使用缓存；false表示不适用缓存
     /**
      * If {@code true}, the protocol is allowed to use caching
      * whenever it can. If {@code false}, the protocol must always
@@ -282,7 +292,11 @@ public abstract class URLConnection {
      * @see java.net.URLConnection#setDefaultUseCaches(boolean)
      */
     protected boolean useCaches;
-    
+
+    // 客户端会保留以前获取的文档缓存，如果再次要求相同文档，可以从缓存种获取，不过在最后一次获取这个文档后，服务器上的文档可能改变
+    // 要判断是否有变化，就要询问服务器，客户端可以在客户端请求的HTTP首部中包括一个If-Modified-Since，这个首部包含一个日期和时间
+    // 如果文档在这个时间之后有所改变，服务器就发送该文档，否则就不发送，一般情况下这个时间是最后获得文档的时间
+    // 该字段指示了放置在If-Modified-Since首部字段中的日期
     /**
      * Some protocols support skipping the fetching of the object unless
      * the object has been modified more recently than a certain time.
@@ -361,6 +375,8 @@ public abstract class URLConnection {
      * @see #setConnectTimeout(int)
      */
     // 连接到当前URL指向的资源
+    // 第一次构建URLConnection，它是未连接的，没有socket连接这两个主机，方法在本地和远程主机之间建立一个连接（一般使用TCP socket）
+    // 对于getInputStream、getContent、getHeaderField和其他要求打开连接的方法，如果连接尚未打开，会调用connect方法
     public abstract void connect() throws IOException;
     
     /*▲ 连接 ████████████████████████████████████████████████████████████████████████████████┛ */
@@ -397,6 +413,8 @@ public abstract class URLConnection {
      * @throws UnknownServiceException if the protocol does not support output.
      */
     // 返回指向当前URL资源的输出流，可以向其写入数据
+    // 返回一个OutputStream，用来写入数据传送给服务器
+    // 默认情况下URLConnection不允许输出，所以在请求输出流之前必须调用setDoOutput(true)
     public OutputStream getOutputStream() throws IOException {
         throw new UnknownServiceException("protocol doesn't support output");
     }
@@ -533,6 +551,8 @@ public abstract class URLConnection {
      * @see #getRequestProperty(java.lang.String)
      */
     // 设置请求头，通常在http(s)协议中被使用
+    // 为http首部增加首部字段，指定名和值为这个URLConnection的首部增加一个字段，只能在连接打开之前使用
+    // HTTP允许一个指定名字的属性有多个值，这种情况下各个值用逗号隔开
     public void setRequestProperty(String key, String value) {
         checkConnected();
         
@@ -590,6 +610,7 @@ public abstract class URLConnection {
      * @since 1.4
      */
     // 获取请求头，通常在http(s)协议中被使用
+    // 返回这个URLConnection所用HTTP首部中指定字段和值
     public Map<String, List<String>> getRequestProperties() {
         checkConnected();
         
@@ -640,7 +661,7 @@ public abstract class URLConnection {
      * @return the value of the named header field, or {@code null}
      * if there is no such field in the header.
      */
-    // 返回指定名称的头信息的值，由子类覆盖实现
+    // 返回【指定名称】的头信息的值，由子类覆盖实现
     public String getHeaderField(String name) {
         return null;
     }
@@ -656,6 +677,7 @@ public abstract class URLConnection {
      * fields.
      */
     // 返回第n(>=0)条头信息的key，由子类覆盖实现
+    // 返回第n个首部的字段的键，请求方法是第0个首部，它的键为null，第一个首部即编号为1
     public String getHeaderFieldKey(int n) {
         return null;
     }
@@ -677,6 +699,7 @@ public abstract class URLConnection {
      * @see java.net.URLConnection#getHeaderFieldKey(int)
      */
     // 返回第n(>=0)条头信息的value，由子类覆盖实现
+    // 返回第n个首部字段的值，请求方法是第0个首部，第一个首部即编号为1
     public String getHeaderField(int n) {
         return null;
     }
@@ -713,6 +736,7 @@ public abstract class URLConnection {
      * missing or malformed.
      */
     // 返回指定名称的int类型的头信息；如果不存在，则解析默认值Default
+    // 首先获取由name参数指定的首部字段，然后尝试将这个字符串转换为一个int，可以用来表示日期的首部字段
     public int getHeaderFieldInt(String name, int Default) {
         String value = getHeaderField(name);
         try {
@@ -741,6 +765,7 @@ public abstract class URLConnection {
      * @since 1.7
      */
     // 返回指定名称的long类型的头信息；如果不存在，则解析默认值Default
+    // 首先获取由name参数指定的首部字段，然后尝试将这个字符串转换为一个long，可以用来表示日期的首部字段
     public long getHeaderFieldLong(String name, long Default) {
         String value = getHeaderField(name);
         try {
@@ -769,6 +794,7 @@ public abstract class URLConnection {
      * missing or malformed.
      */
     // 返回指定名称的日期类型的头信息；如果不存在，则将默认值Default解析为日期返回
+    // 首先获取由name参数指定的首部字段，然后尝试将这个字符串转换为一个long，可以用来表示日期的首部字段
     @SuppressWarnings("deprecation")
     public long getHeaderFieldDate(String name, long Default) {
         String value = getHeaderField(name);
@@ -798,6 +824,7 @@ public abstract class URLConnection {
      * or if the content length is greater than Integer.MAX_VALUE.
      */
     // 返回"content-length"
+    // 返回内容种有多少字节，如果没有这个首部，则返回-1
     public int getContentLength() {
         long l = getContentLengthLong();
         if(l>Integer.MAX_VALUE) {
@@ -844,6 +871,9 @@ public abstract class URLConnection {
      * @see java.net.URLConnection#getHeaderField(java.lang.String)
      */
     // 返回"content-encoding"
+    // 指出内容如何编码，web上最常用的内容编码可能是x-gzip，可以使用GZipInputStream直接解码
+    // 内容编码指出字节如何编码为其他字节
+    // 字符编码由Content-type首部或文档内部的信息确定，指出如何将字符编码为字节
     public String getContentEncoding() {
         return getHeaderField("content-encoding");
     }
@@ -953,6 +983,7 @@ public abstract class URLConnection {
      * @see java.net.URLConnection#getContentType()
      */
     // 返回(猜测)指定文件名对应的MIME类型
+    // 尝试根据对象URL的文件扩展名部分猜测对象的内容类型
     public static String guessContentTypeFromName(String fname) {
         // 获取文件名到MIME类型的映射
         FileNameMap fileNameMap = getFileNameMap();
@@ -982,6 +1013,7 @@ public abstract class URLConnection {
      * @see java.net.URLConnection#getContentType()
      */
     // 对于特定类型的文件，可以通过解析其输入流的前几个字节来猜测该文件的真实类型
+    // 尝试查看流中前几个字节猜测内容类型
     public static String guessContentTypeFromStream(InputStream is) throws IOException {
         // If we can't read ahead safely, just give up on guessing
         if(!is.markSupported()) {
@@ -1190,7 +1222,8 @@ public abstract class URLConnection {
             return defaultUseCaches;
         }
     }
-    
+
+    // 控制socket等待建立连接的时间，0表示永远不超时
     /**
      * Returns setting for connect timeout.
      * <p>
@@ -1207,7 +1240,8 @@ public abstract class URLConnection {
     public int getConnectTimeout() {
         return connectTimeout;
     }
-    
+
+    // 控制输入流等待数据到达的时间，0表示永远不超时
     /**
      * Returns setting for read timeout. 0 return implies that the
      * option is disabled (i.e., timeout of infinity).
@@ -1275,7 +1309,8 @@ public abstract class URLConnection {
     public long getIfModifiedSince() {
         return ifModifiedSince;
     }
-    
+
+    // 在尝试连接一个URL前，可能想知道是否允许连接，返回的Permission指出连接这个URL所需的权限
     /**
      * Returns a permission object representing the permission
      * necessary to make the connection represented by this

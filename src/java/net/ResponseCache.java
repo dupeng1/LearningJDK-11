@@ -88,6 +88,8 @@ public abstract class ResponseCache {
         return theResponseCache;
     }
 
+    // 处理CacheRequest、CacheResponse，把参数指定的缓存对象设置为系统的默认缓存，Java虚拟机只支持一个共享缓存
+    // 一旦安装了缓存，只要系统尝试加载一个新的URL，它首先会在缓存种查找，如果缓存返回了所要的内容，就不需要与远程服务器连接
     /**
      * Sets (or unsets) the system-wide cache.
      *
@@ -111,6 +113,7 @@ public abstract class ResponseCache {
         theResponseCache = responseCache;
     }
 
+    // 获取系统缓存种的数据
     /**
      * Retrieve the cached response based on the requesting uri,
      * request method and request headers. Typically this method is
@@ -139,6 +142,7 @@ public abstract class ResponseCache {
         get(URI uri, String rqstMethod, Map<String, List<String>> rqstHeaders)
         throws IOException;
 
+    // 存储系统缓存的数据，返回一个CacheRequest，包装了OutputStream，URL将把读取的可缓存数据写入这个输出流
     /**
      * The protocol handler calls this method after a resource has
      * been retrieved, and the ResponseCache must decide whether or
