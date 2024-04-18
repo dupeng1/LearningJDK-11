@@ -113,6 +113,7 @@ public abstract class ServerSocketChannel extends AbstractSelectableChannel impl
      * @throws IOException If an I/O error occurs
      */
     // 构造一个【未绑定】的ServerSocket，本质是创建了[服务端Socket(监听)]，内部初始化了该Socket的文件描述符
+    // 实际上并不打开一个新的服务器Socket，而只是创建这个对象
     public static ServerSocketChannel open() throws IOException {
         return SelectorProvider.provider().openServerSocketChannel();
     }
@@ -249,9 +250,11 @@ public abstract class ServerSocketChannel extends AbstractSelectableChannel impl
      * [服务端Socket(监听)]等待客户端的连接请求；
      * 连接成功后，返回与[客户端Socket]建立连接的[服务端Socket(通信)]。
      *
-     * 注：此处返回的SocketChannel对象默认是阻塞式的，可以后续将其设置为非阻塞模式
-     * 1、没有待处理的连接场景下，如果是非阻塞通道，则直接返回，否则阻塞
-     * 2、获取的通道的阻塞模式和当前通道没有关系
+     * 注：此处返回的SocketChannel对象默认是【阻塞式】的，可以后续将其设置为【非阻塞模式】
+     * 1、【没有待处理的连接】场景下，如果是【非阻塞通道】，则【直接返回】，否则【阻塞】
+     * 2、【获取的通道】的【阻塞模式】和【当前通道】没有关系
+     *
+     * 非阻塞模式更适合于需要为每个连接完成大量工作的服务器，这样就可以并行地处理多个请求，非阻塞模式一般与Selector结合使用
      */
     public abstract SocketChannel accept() throws IOException;
     

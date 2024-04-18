@@ -442,6 +442,12 @@ public abstract class HttpURLConnection extends URLConnection {
          return instanceFollowRedirects;
      }
 
+     // 设置请求方法
+    // HEAD与GET相似，它告诉服务器只返回HTTP首部；这个方法最常用的用途是检查文件在最后一次缓存之后是否有修改
+    // PUT，允许客户端将文档放在网站的抽象层次结构中，而不需要知道网站是如何映射到实际的本地文件系统
+    // DELET，删除web服务器上位于指定URL的文件
+    // OPTIONS，询问某个特定的URL支持哪些选项
+    // TRACE，发送HTTP首部，服务器将从客户端接收这个HTTP首部
     /**
      * Set the method for the URL request, one of:
      * <UL>
@@ -487,6 +493,7 @@ public abstract class HttpURLConnection extends URLConnection {
         throw new ProtocolException("Invalid HTTP method: " + method);
     }
 
+    // 获取发送请求的方法
     /**
      * Get the request method.
      * @return the HTTP request method
@@ -496,7 +503,7 @@ public abstract class HttpURLConnection extends URLConnection {
         return method;
     }
 
-    // 数字响应码
+    // 获取服务器的响应码
     /**
      * Gets the status code from an HTTP response message.
      * For example, in the case of the following status lines:
@@ -577,7 +584,7 @@ public abstract class HttpURLConnection extends URLConnection {
         return -1;
     }
 
-    // 响应消息
+    // 获取服务器的响应消息
     /**
      * Gets the HTTP response message, if any, returned along with the
      * response code from a server.  From responses like:
@@ -610,6 +617,7 @@ public abstract class HttpURLConnection extends URLConnection {
     }
 
 
+    // 断开与服务器的连接
     /**
      * Indicates that other requests to the server
      * are unlikely in the near future. Calling disconnect()

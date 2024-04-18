@@ -192,7 +192,7 @@ public class ServerSocket implements Closeable {
      *
      * port     [服务端Socket]绑定的本地端口
      * backlog  允许积压(排队)的待处理连接数
-     * bindAddr [服务端Socket]绑定的本地IP
+     * bindAddr [服务端Socket]绑定的本地IP，有多个以太网卡，连接公共网络和本地网络，该参数可以指定监听公共网络还是本地网络
      */
     public ServerSocket(int port, int backlog, InetAddress bindAddr) throws IOException {
         // 创建"Socket委托"，并为其关联当前ServerSocket
@@ -315,7 +315,7 @@ public class ServerSocket implements Closeable {
      *       默认绑定到服务端的本地IP上。
      *
      * port     [服务端Socket]绑定的本地端口
-     * backlog  允许积压(排队)的待处理连接数
+     * backlog  允许积压(排队)的待处理连接数，队列一次最多可以保存backlog个入站连接，如果试图将队列长度设置为大于操作系统的最大队列长度，则会使用最大队列长度
      */
     public ServerSocket(int port, int backlog) throws IOException {
         this(port, backlog, null);
@@ -368,6 +368,8 @@ public class ServerSocket implements Closeable {
      * 创建[服务端Socket(监听)]，并对其执行【bind】和【listen】操作，此处允许积压(排队)的待处理连接数为50
      *
      * endpoint: 既作为服务端的绑定地址(包含端口)，也作为开启监听的地址(包含端口)
+     *
+     * 允许程序在绑定端口之前设置服务器socket选项
      */
     public void bind(SocketAddress endpoint) throws IOException {
         bind(endpoint, 50);
@@ -687,6 +689,7 @@ public class ServerSocket implements Closeable {
      * @see SecurityManager#checkConnect
      */
     // 返回本地IP，即服务端IP；如果没有绑定，则返回null
+    // 如果本地主机有一个ip指定，这就是InetAddress.getLocalHost返回的地址，如果本地主机有多个IP地址，返回的特定地址则是主机的IP地址之一
     public InetAddress getInetAddress() {
         if(!isBound()) {
             return null;
@@ -728,6 +731,8 @@ public class ServerSocket implements Closeable {
      * -1 if the socket is not bound yet.
      */
     // 返回本地端口，即服务端的端口
+    // 如果ServerSocket尚未绑定网络接口，这个方法返回null
+    // ServerSocket构造函数允许为端口号传递0，从而监听未指定的端口，利用该方法就可以找出所监听的端口
     public int getLocalPort() {
         if(!isBound()) {
             return -1;
@@ -815,6 +820,8 @@ public class ServerSocket implements Closeable {
      * @since 1.1
      */
     // 设置超时约束的时间
+    // 在抛出java.io.SocketTimeoutException异常前等待入站连接的时间，如果参数为0，accept就永远不会超时，默认值的作用就是永远不超时
+    // 在调用accept之前设置这个选项
     public synchronized void setSoTimeout(int timeout) throws SocketException {
         if(isClosed()) {
             throw new SocketException("Socket is closed");
@@ -890,6 +897,7 @@ public class ServerSocket implements Closeable {
      * @since 1.4
      */
     // 设置输入流缓冲区大小
+    // 该设置就像在accept返回的各个socket上调用setReceiveBufferSize，只不过socket已经接受之后就不能改变接收缓冲区的大小了
     public synchronized void setReceiveBufferSize(int size) throws SocketException {
         if(!(size>0)) {
             throw new IllegalArgumentException("negative receive size");

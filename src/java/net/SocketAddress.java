@@ -36,8 +36,8 @@ import java.io.Serializable;
  * @see java.net.ServerSocket
  * @since 1.4
  */
-/*
- * 表示【连接端点】的【地址(ip + port)】
+/*表示【连接端点】的【地址(ip + port)】
+ *
  *
  * 理论上，该类可以用于【TCP和非TCP】的socket，但实际上，当前只支持【TCP/IP socket】。
  * 实际使用的【Socket地址】都是【InetSocketAddress】的实例。

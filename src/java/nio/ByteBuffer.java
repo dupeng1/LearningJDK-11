@@ -292,6 +292,8 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @throws IllegalArgumentException If the {@code capacity} is a negative integer
      */
     // 创建直接内存缓冲区DirectByteBuffer
+    // VM会对以太网卡、核心内存、其他位置上的缓冲区使用直接内存，可以提升IO操作的性能
+    // 在直接缓冲区上调用array、arrayOffset会抛出异常UnspportedOperationException
     public static ByteBuffer allocateDirect(int capacity) {
         return new DirectByteBuffer(capacity);
     }
@@ -385,6 +387,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @return The new byte buffer
      */
     // 包装一个字节数组到buffer
+    // 如果已经有了要输出的数据数组，一般要用缓冲区进行包装，(不是分配一个新的缓冲区，然后一次一部分地复制到这个缓冲区)
     public static ByteBuffer wrap(byte[] array) {
         return wrap(array, 0, array.length);
     }
@@ -463,6 +466,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * {@inheritDoc}
      */
     // 修改标记，可以切换缓冲区读/写模式
+    // 限度设置为其位置，并将位置重新设置为0，也就是缓冲区的开始位置，切换成读模式
     @Override
     public ByteBuffer flip() {
         super.flip();
@@ -653,6 +657,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @throws BufferUnderflowException If the buffer's current position is not smaller than its limit
      */
     // 读取position处（可能需要加offset）的byte，然后递增position。
+    // 将位置前移一个元素，位置到达限度时，hasRemaining返回false，称为排空缓冲区
     public abstract byte get();
     
     /**
@@ -712,6 +717,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      *                                   parameters do not hold
      */
     // 复制源缓存区的length个元素到dst数组offset索引处
+    // 用现有字节数组的子数组排空缓冲区，从当前位置将数据读取到参数指定的数组或子数组中
     public ByteBuffer get(byte[] dst, int offset, int length) {
         checkBounds(offset, length, dst.length);
         if(length > remaining())
@@ -740,6 +746,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      *                                  remaining in this buffer
      */
     // 复制源缓存区的内容到dst数组，尽量填满dst
+    // 用现有字节数组排空缓冲区
     public ByteBuffer get(byte[] dst) {
         return get(dst, 0, dst.length);
     }
@@ -956,6 +963,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @throws ReadOnlyBufferException If this buffer is read-only
      */
     // 向position处（可能需要加offset）写入byte，并将position递增
+    // 填充缓冲区，缓冲区至多只能填充到其容量大小，如果试图填充的数据超出了初始设置的容量，put会抛出异常
     public abstract ByteBuffer put(byte b);
     
     /**
@@ -1018,6 +1026,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @throws ReadOnlyBufferException   If this buffer is read-only
      */
     // 从源字节数组src的offset处开始，复制length个元素，写入到当前缓冲区
+    // 用现有字节数组的子数组填充缓冲区
     public ByteBuffer put(byte[] src, int offset, int length) {
         checkBounds(offset, length, src.length);
         if(length > remaining())
@@ -1047,6 +1056,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @throws ReadOnlyBufferException If this buffer is read-only
      */
     // 将字节数组src的全部内容写入此缓冲区
+    // 用现有字节数组填充缓冲区，从当前位置开始插入指定数组或子数组的数据
     public final ByteBuffer put(byte[] src) {
         return put(src, 0, src.length);
     }

@@ -158,6 +158,13 @@ import sun.security.util.SecurityConstants;
 // URL资源连接的公共父类
 // 指向URL指定资源的活动连接，与URL相比，它对与服务器的交互提供了更多控制，可以检查服务器发送的首部，并做出响应，可以设置请求服务器的首部，
 // 可以用POST、PUT、其他HTTP方法向服务器发送数据
+
+/**
+ * URL和URLConnection这两个类最大的不同在于
+ * URLConnection提供了对HTTP首部的访问
+ * URLConnection可以配置发送给服务器的请求参数
+ * URLConnection出来读取服务器的数据外，还可以向服务器写入数据
+ */
 public abstract class URLConnection {
     
     private static final String contentClassPrefix = "sun.net.www.content";
@@ -375,7 +382,7 @@ public abstract class URLConnection {
      * @see #setConnectTimeout(int)
      */
     // 连接到当前URL指向的资源
-    // 第一次构建URLConnection，它是未连接的，没有socket连接这两个主机，方法在本地和远程主机之间建立一个连接（一般使用TCP socket）
+    // 第一次构建URLConnection，它是未连接的，没有socket连接这两个主机，方法在本地和远程主机之间建立一个连接（一般使用TCP socket），并未实际发送请求
     // 对于getInputStream、getContent、getHeaderField和其他要求打开连接的方法，如果连接尚未打开，会调用connect方法
     public abstract void connect() throws IOException;
     
@@ -736,7 +743,7 @@ public abstract class URLConnection {
      * missing or malformed.
      */
     // 返回指定名称的int类型的头信息；如果不存在，则解析默认值Default
-    // 首先获取由name参数指定的首部字段，然后尝试将这个字符串转换为一个int，可以用来表示日期的首部字段
+    // 1、首先获取由name参数指定的首部字段，2、然后尝试将这个字符串转换为一个int，可以用来表示日期的首部字段
     public int getHeaderFieldInt(String name, int Default) {
         String value = getHeaderField(name);
         try {
@@ -794,7 +801,7 @@ public abstract class URLConnection {
      * missing or malformed.
      */
     // 返回指定名称的日期类型的头信息；如果不存在，则将默认值Default解析为日期返回
-    // 首先获取由name参数指定的首部字段，然后尝试将这个字符串转换为一个long，可以用来表示日期的首部字段
+    // 1、首先获取由name参数指定的首部字段，2、然后尝试将这个字符串转换为一个long，可以用来表示日期的首部字段
     @SuppressWarnings("deprecation")
     public long getHeaderFieldDate(String name, long Default) {
         String value = getHeaderField(name);
@@ -858,6 +865,16 @@ public abstract class URLConnection {
      * @see java.net.URLConnection#getHeaderField(java.lang.String)
      */
     // 返回MIME信息头中的"content-type"(MIME类型)
+
+    /**
+     * MIME是一个互联网标准，它扩展了电子邮件标准，使其能够支持文本、音频、视频、应用程序软件等多种文件格式的发送和接收
+     * MIME最初是为了在电子邮件系统中发送非ASCII字符设计的，后来其应用范围被扩展到支持各种类型的数据在互联网上传输
+     *
+     * MIME通过使用“类型/子类型”的格式来标识文件类型，例如text/plain：标识纯文本文件，text/html：表示HTML文档
+     * MIME类型不仅用于电子邮件，还广泛用于web开发，特别是在HTTP协议的content-type头部中
+     * 当浏览器向服务器请求一个页面或资源时，服务器会在相应的HTTP头部中指定资源的MIME类型，这样浏览器就知道如何正确处理和显示该资源
+     * @return
+     */
     public String getContentType() {
         return getHeaderField("content-type");
     }
@@ -901,7 +918,7 @@ public abstract class URLConnection {
      *
      * @see java.net.URLConnection#getHeaderField(java.lang.String)
      */
-    // 返回"date"
+    // 返回"date"，指出文档何时发送
     public long getDate() {
         return getHeaderFieldDate("date", 0);
     }

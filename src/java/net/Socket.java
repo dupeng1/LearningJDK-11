@@ -98,6 +98,9 @@ import sun.net.ApplicationProxy;
  *
  *
  * 注：客户端与服务端是一个相对的概念，没有绝对的客户端或绝对的服务端
+ * socket是一种特殊的文件，一些socket函数就是对其进行操作（读写、打开、关闭），说白了socket是应用层与TCP/IP协议族通信的中间软件抽象层，它是一组接口。
+ * 在设计模式中，socket其实就是一个门面模式，它把复杂的TCP/IP协议族隐藏在socket接口后面，对用户来说，一组简单的接口就是全部，让socket去组织数据，以符合指定的协议
+ *
  */
 public class Socket implements Closeable {
     
@@ -1013,6 +1016,8 @@ public class Socket implements Closeable {
      * @since 1.3
      */
     // 关闭读取功能
+    // 调整与Socket连接的流，使它认为已经到了流的末尾，关闭输入之后再读取输入流会返回-1，
+    // 只影响socket的流，并不释放socket关联的资源，如所占用的端口，使用结束后仍需要关闭socket
     public void shutdownInput() throws IOException {
         if(isClosed()) {
             throw new SocketException("Socket is closed");
@@ -1053,6 +1058,8 @@ public class Socket implements Closeable {
      * @since 1.3
      */
     // 关闭写入功能
+    // 关闭输出之后再写入socket则会抛出IOException，只影响socket的流，并不释放socket关联的资源，如所占用的端口，
+    // 使用结束后仍需要关闭socket
     public void shutdownOutput() throws IOException {
         if(isClosed()) {
             throw new SocketException("Socket is closed");
@@ -1111,6 +1118,7 @@ public class Socket implements Closeable {
      * @since 1.4
      */
     // 返回本地Socket地址(ip+port)
+    // 如果socket尚未连接，则返回null
     public SocketAddress getLocalSocketAddress() {
         if(!isBound()) {
             return null;
@@ -1222,6 +1230,7 @@ public class Socket implements Closeable {
      * @since 1.4
      */
     // 返回远程Socket地址(ip+port)
+    // 如果socket尚未连接，则返回null
     public SocketAddress getRemoteSocketAddress() {
         if(!isConnected()) {
             return null;
@@ -1459,6 +1468,7 @@ public class Socket implements Closeable {
 
     // 正常情况下，尝试从Socket读取数据时，read()调用会阻塞尽可能长的时间来得到足够的字节。
     // 设置该参数可以确保这次调用阻塞的时间不会超过某个固定的毫秒数
+    // 当时间到了就会抛出InterruptIOException
     public synchronized void setSoTimeout(int timeout) throws SocketException {
         if(isClosed()) {
             throw new SocketException("Socket is closed");
@@ -1611,6 +1621,7 @@ public class Socket implements Closeable {
      * @since 1.2
      */
     // 设置输入流缓冲区大小
+    // 如果发送缓冲区设置为64k，接收缓冲区设置为128k，那么发送和接收缓冲区大小都将是64k
     public synchronized void setReceiveBufferSize(int size) throws SocketException {
         if(size<=0) {
             throw new IllegalArgumentException("invalid receive size");
@@ -1659,7 +1670,10 @@ public class Socket implements Closeable {
      * @see #getTcpNoDelay()
      * @since 1.1
      */
-    // 设置是否禁用Nagle算法
+    // 设置是否禁用Nagle算法，关闭或开启socket缓冲
+    // 确保包会尽可能快地发送，而无论包的大小
+    // 正常情况下，小数据包在发送前会组合为更大的包，在发送一个包之前，本地主机要等待远程系统对前一个包的确认，称为Nagle算法
+    // Nagle算法问题是，如果远程系统没有足够快地将确认发送回本地系统，那么依赖于小数据量信息稳定传输的应用程序会变得很慢
     public void setTcpNoDelay(boolean on) throws SocketException {
         if(isClosed()) {
             throw new SocketException("Socket is closed");
@@ -1685,6 +1699,9 @@ public class Socket implements Closeable {
      * @since 1.1
      */
     // 获取是否启用延时关闭
+    // 指定了socket关闭时如何处理尚未发送的数据报，默认情况下close方法立即返回，但系统仍会尝试发送剩余的数据
+    // 如果延迟时间设置为0，那么当socket关闭时，所有未发送的数据包都将被丢弃
+    // 如果延迟时间为任意正数，close会阻塞，等待发送数据和接收确认，过去相应时间后，socket关闭，所有剩余的数据都不会发送
     public int getSoLinger() throws SocketException {
         if(isClosed()) {
             throw new SocketException("Socket is closed");
@@ -1787,6 +1804,7 @@ public class Socket implements Closeable {
      * @since 1.4
      */
     // 设置是否允许发送"紧急数据"
+    // 当接收方收到紧急数据时会得到通知，在处理其他已收到的数据之前可以选择先处理这个紧急数据
     public void setOOBInline(boolean on) throws SocketException {
         if(isClosed()) {
             throw new SocketException("Socket is closed");
@@ -1831,6 +1849,8 @@ public class Socket implements Closeable {
      */
     // 设置是否开启设置心跳机制
     // 如果设置了该参数，客户端偶尔会通过一个空闲连接发送一个数据包（一般两小时一次），以确保服务器未关闭
+    // 如果在12分钟内未收到相应，客户端就关闭socket
+    // 如果没有设置，不活动的客户端可能会永远存在下去，而不会注意到服务器已经崩溃
     public void setKeepAlive(boolean on) throws SocketException {
         if(isClosed()) {
             throw new SocketException("Socket is closed");
@@ -1900,6 +1920,9 @@ public class Socket implements Closeable {
      * @since 1.4
      */
     // 设置是否允许立刻重用已关闭的socket端口
+    // 一个socket关闭时可能不会立即释放本地端口，有时会等待一段时间，如果新socket绑定该端口可能就有问题
+    // 因为这会组织其他socket同时使用这个端口，如果开启reuseAddress，就允许另一个socket绑定到这个端口
+    // 即使此时仍有可能存在前一个socket未接收的数据
     public void setReuseAddress(boolean on) throws SocketException {
         if(isClosed()) {
             throw new SocketException("Socket is closed");
@@ -2110,6 +2133,7 @@ public class Socket implements Closeable {
      * @since 1.4
      */
     // 发送一个字节的"紧急数据"，参见SocketOptions#SO_OOBINLINE参数
+    // 几乎会立即发送参数中最低位字节，如果必要，当前缓存的所有数据将首先刷新输出
     public void sendUrgentData(int data) throws IOException {
         SocketImpl impl = getImpl();
         

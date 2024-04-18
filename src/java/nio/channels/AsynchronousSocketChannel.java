@@ -161,7 +161,9 @@ public abstract class AsynchronousSocketChannel implements AsynchronousByteChann
     /*
      * 创建并返回一个【异步】【Socket通道】
      *
-     * 这里使用了默认的异步Socket通道工厂，在使用该工厂创建异步Socket通道时，会自动启动工作线程。
+     * 这里使用了默认的【异步】【Socket通道工厂】
+     *
+     * 在使用该工厂创建异步Socket通道时，会自动启动工作线程。
      */
     public static AsynchronousSocketChannel open() throws IOException {
         return open(null);
@@ -188,8 +190,8 @@ public abstract class AsynchronousSocketChannel implements AsynchronousByteChann
     /*
      * 创建并返回一个【异步】【Socket通道】，group是该通道关联的【异步通道组】
      *
-     * 如果group为null，则使用默认的异步Socket通道工厂；
-     * 如果group不为null，则应当使用group中提供的异步Socket通道工厂。
+     * 如果group为null，则使用【默认】的【异步】【Socket通道工厂】；
+     * 如果group不为null，则应当使用【group】中提供的【异步】【Socket通道工厂】。
      *
      * 在使用异步Socket通道工厂创建异步Socket通道时，应当启动工作线程。
      */
@@ -243,8 +245,8 @@ public abstract class AsynchronousSocketChannel implements AsynchronousByteChann
      * 对[客户端Socket]执行【connect】操作，以便连接到【远端Socket】；
      * 返回值是一个包含Void的Future，主线程轮询此Future以判断是否accept完成。
      *
-     * 注：这里的返回值包装Void的原因是connect操作本来就没有返回值，Void在这里只是用来占位。
-     * 　　又由于需要一个判断异步IO操作是否完成的机制，所以引入了Future。
+     * 注：1、这里的返回值包装Void的原因是connect操作本来就没有返回值，Void在这里只是用来占位。
+     * 　　2、又由于需要一个判断异步IO操作是否完成的机制，所以引入了Future。
      */
     public abstract Future<Void> connect(SocketAddress remote);
     
@@ -281,8 +283,8 @@ public abstract class AsynchronousSocketChannel implements AsynchronousByteChann
      * 对[客户端Socket]执行【connect】操作，以便连接到【远端Socket】；
      * 最后一个参数是异步IO回调句柄，由工作线程执行完任务之后通过handler中的回调方法通知主线程。
      *
-     * 注：这里的回调句柄包装Void的原因是connect操作本来就没有返回值，Void在这里只是用来占位。
-     * 　　又由于需要一个回调机制来向主线程反馈任务执行结果，所以引入了CompletionHandler。
+     * 注：1、这里的回调句柄包装Void的原因是connect操作本来就没有返回值，Void在这里只是用来占位。
+     * 　　2、又由于需要一个回调机制来向主线程反馈任务执行结果，所以引入了CompletionHandler。
      */
     public abstract <A> void connect(SocketAddress remote, A attachment, CompletionHandler<Void, ? super A> handler);
     

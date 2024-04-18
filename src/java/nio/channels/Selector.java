@@ -269,6 +269,7 @@ import java.util.function.Consumer;
  * @since 1.4
  */
 // 【通道选择器】，完成对通道的【多路复用】
+// 并不是所有通道都是可选择的（特别是FileChannel就不可选择），不过所有网络通道都是可选择的，通过将选择器传递给通道的注册方法，就可以向选择器注册这个通道
 public abstract class Selector implements Closeable {
     
     /*▼ 构造器 ████████████████████████████████████████████████████████████████████████████████┓ */
@@ -324,7 +325,7 @@ public abstract class Selector implements Closeable {
      * @throws ClosedSelectorException If this selector is closed
      */
     /*
-     * 选择【可用的】【已就绪通道】，返回本轮select()中找到的所有【可用的】【"已就绪键"】(已就绪通道)的数量
+     * 选择【可用的】【已就绪通道】，返回本轮select()中找到的所有【可用的】【"已就绪键"】(已就绪通道)的数量，完成【阻塞】的选择，直到至少有一个注册通道准备好就可以进行处理
      *
      * 注：
      * 1.会将【可用的】【"已就绪键"】存储到【"已就绪键集合"】中(参见SelectorImpl#selectedKeys)
@@ -350,7 +351,8 @@ public abstract class Selector implements Closeable {
      * @throws ClosedSelectorException If this selector is closed
      */
     /*
-     * 选择【可用的】【已就绪通道】，返回本轮select()中找到的所有【可用的】【"已就绪键"】(已就绪通道)的数量
+     * 选择【可用的】【已就绪通道】，返回本轮select()中找到的所有【可用的】【"已就绪键"】(已就绪通道)的数量，完成【非阻塞】选择，如果当前没有准备好要处理的连接，
+     * 它会立即返回
      *
      * 注：
      * 1.会将【可用的】【"已就绪键"】存储到【"已就绪键集合"】中(参见SelectorImpl#selectedKeys)
@@ -384,7 +386,8 @@ public abstract class Selector implements Closeable {
      * @throws IllegalArgumentException If the value of the timeout argument is negative
      */
     /*
-     * 选择【可用的】【已就绪通道】，返回本轮select()中找到的所有【可用的】【"已就绪键"】(已就绪通道)的数量
+     * 选择【可用的】【已就绪通道】，返回本轮select()中找到的所有【可用的】【"已就绪键"】(已就绪通道)的数量，完成【阻塞】的选择，
+     * 在返回前等待不超过timeout毫秒，如果没有通道就绪程序就不做任何操作
      *
      * 注：会将可用的"已就绪键"存储到"已就绪键集合"中(参见SelectorImpl#selectedKeys)
      *
@@ -617,6 +620,7 @@ public abstract class Selector implements Closeable {
      * @throws IOException If an I/O error occurs
      */
     // 关闭选择器
+    // 当准备关闭服务器或不再需要选择器时，应当将它关闭，会释放与选择器关联的所有资源
     public abstract void close() throws IOException;
     
     /*▲ 打开/关闭 ████████████████████████████████████████████████████████████████████████████████┛ */
@@ -683,6 +687,7 @@ public abstract class Selector implements Closeable {
      * @throws ClosedSelectorException If this selector is closed
      */
     // 获取已就绪通道selectedKeys的视图，与selectedKeys共享元素，允许删除，但不允许增加
+    // 迭代处理返回的集合时，要依次处理各个SelectionKey，还可以从迭代器中删除键，告诉选择器这个键已经得到处理，否则选择器在以后循环时还会一直通知有这个键
     public abstract Set<SelectionKey> selectedKeys();
     
     /*▲ 视图 ████████████████████████████████████████████████████████████████████████████████┛ */

@@ -109,6 +109,9 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  *
  * 其中，通道(channel)和选择器(selector)是两个关键的属性，
  * 因为用这两个属性可以确定一个"选择键"是否为新注册进来的。
+ *
+ * 相当于通道的指针，还可以保存一个对象的附件，一般会存储这个通道上的连接的状态
+ * Selector的selectedKeys可以在Set中返回SelectionKey对象，
  */
 public abstract class SelectionKey {
     
@@ -309,7 +312,7 @@ public abstract class SelectionKey {
      *
      * @throws CancelledKeyException If this key has been cancelled
      */
-    // 客户端通道是否【连接到了远端】
+    // 【客户端通道】是否【连接到了远端】
     public final boolean isConnectable() {
         return (readyOps() & OP_CONNECT) != 0;
     }
@@ -333,7 +336,7 @@ public abstract class SelectionKey {
      *
      * @throws CancelledKeyException If this key has been cancelled
      */
-    // 服务端通道【是否收到了来自客户端的连接】
+    // 【服务端通道】【是否收到了来自客户端的连接】
     public final boolean isAcceptable() {
         return (readyOps() & OP_ACCEPT) != 0;
     }
@@ -512,6 +515,7 @@ public abstract class SelectionKey {
      * same selector.  </p>
      */
     // 取消当前"选择键"对象，取消之后其状态变为无效
+    // 如果结束使用连接，就要撤销其SelectionKey对象的注册，这样选择器就不会浪费资源再去查询它是否准备就绪
     public abstract void cancel();
     
     /*▲ 状态 ████████████████████████████████████████████████████████████████████████████████┛ */

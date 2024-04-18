@@ -42,9 +42,11 @@ package java.nio.channels;
  * @since 1.7
  */
 /*
- * 异步IO回调句柄
+ * 【异步】【IO回调句柄】
  *
  * 如果某个异步IO操作显式设置了回调句柄，那么在任务执行结束后，会通过Invoker类来处理当前回调句柄。
+ * V：IO结果类型
+ * A：附属到IO操作的对象
  *
  * 参见：Invoker
  */

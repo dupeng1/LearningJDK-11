@@ -150,6 +150,8 @@ public abstract class SocketChannel extends AbstractSelectableChannel implements
      * @throws IOException If an I/O error occurs
      */
     // 构造一个【未绑定】的[客户端Socket]，内部初始化了该Socket的文件描述符
+    // 不会建立连接，创建一个初始未连接的socket，以后必须用connect方法进行连接
+    // 为了在连接前配置通道和socket的各种选项，可能会选择这种更迂回的方法，特别是如果希望以无阻塞方式打开通道时，就要使用这种方法
     public static SocketChannel open() throws IOException {
         return SelectorProvider.provider().openSocketChannel();
     }
@@ -179,6 +181,7 @@ public abstract class SocketChannel extends AbstractSelectableChannel implements
      * @throws IOException                     If some other I/O error occurs
      */
     // 构造一个[客户端Socket]，并将其连接到远端
+    // 会建立连接，这个方法将阻塞，也就是说在连接建立或抛出异常之前，这个方法不会返回
     public static SocketChannel open(SocketAddress remote) throws IOException {
         // 构造一个未绑定的[客户端Socket]，内部初始化了该Socket的文件描述符
         SocketChannel socketChannel = open();
@@ -297,6 +300,8 @@ public abstract class SocketChannel extends AbstractSelectableChannel implements
      * 在阻塞模式下，则连接操作会陷入阻塞，直到成功建立连接，或者发生IO异常。
      *
      * 在连接过程中发起的读写操作将被阻塞，直到连接完成
+     * 使用非阻塞通道时，connect方法会立即返回，甚至在连接建立之前就会返回，在等待操作系统建立连接时，程序可以做其他操作，不过程序在实际使用连接之前，必须调用finishConnect
+     * 判断连接是否建立
      */
     public abstract boolean connect(SocketAddress remote) throws IOException;
     
@@ -398,6 +403,10 @@ public abstract class SocketChannel extends AbstractSelectableChannel implements
      * @throws NotYetConnectedException If this channel is not yet connected
      */
     // 从当前通道中读取数据，读到的内容写入dst
+    // 通道会用尽可能多的数据填充缓冲区，然后返回放入的字节数。
+    // 如果遇到流末尾，通道会用所有剩余的字节填充缓冲区，而且在下一次调用read()时返回-1
+    // 如果通道是阻塞的，至少读取一个字节，或者返回-1，也可能抛出一个异常
+    // 如果通道是非阻塞的，这个方法可能返回0
     public abstract int read(ByteBuffer dst) throws IOException;
     
     /**
@@ -419,6 +428,8 @@ public abstract class SocketChannel extends AbstractSelectableChannel implements
      * @throws NotYetConnectedException If this channel is not yet connected
      */
     // 从src中读取数据，读到的内容向当前通道中写入
+    // 如果通道是非阻塞的，这个方法不能保证会写入缓冲区的全部内容
+    // 由于缓冲区基于游标的特性，可以很容易地反复调用这个方法，知道缓冲区完全排空，而且数据已完全写入
     public abstract int write(ByteBuffer src) throws IOException;
     
     /**
