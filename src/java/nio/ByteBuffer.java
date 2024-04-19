@@ -227,7 +227,7 @@ package java.nio;
  * @since 1.4
  */
 /*
- * 字节缓冲区
+ * 字节缓冲区，以字节为单位对数据进行存取
  *
  *             ByteBuffer
  *       ┌─────────┴────────┐
@@ -359,6 +359,8 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      *                                   parameters do not hold
      */
     // 包装一个字节数组到buffer（包装一部分）
+    // offset设置位置的值
+    // length将新缓冲区的界限设置为offset+length
     public static ByteBuffer wrap(byte[] array, int offset, int length) {
         try {
             return new HeapByteBuffer(array, offset, length);
@@ -640,6 +642,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @return The new, read-only byte buffer
      */
     // 只读副本，新缓冲区共享旧缓冲区的【原始区域】，且新旧缓冲区【活跃区域】一致。两个缓冲区标记独立。
+    // 新缓冲区的内容将为此缓冲区的内容，新缓冲区是只读并且不允许修改共享内容，新缓冲区的容量、限制、位置和标记值将与此缓冲区相同
     public abstract ByteBuffer asReadOnlyBuffer();
     
     /*▲ 创建新缓冲区，新旧缓冲区共享内部的存储容器 ████████████████████████████████████████████████████████████████████████████████┛ */
@@ -717,7 +720,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      *                                   parameters do not hold
      */
     // 复制源缓存区的length个元素到dst数组offset索引处
-    // 用现有字节数组的子数组排空缓冲区，从当前位置将数据读取到参数指定的数组或子数组中
+    // 用现有字节数组的子数组排空缓冲区，从当前位置将数据读取到参数指定的数组或子数组中，如果此缓冲区中剩余的字节少于满足请求所需的字节（length>remaning），则不传输字节且将抛出异常
     public ByteBuffer get(byte[] dst, int offset, int length) {
         checkBounds(offset, length, dst.length);
         if(length > remaining())
@@ -1026,7 +1029,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @throws ReadOnlyBufferException   If this buffer is read-only
      */
     // 从源字节数组src的offset处开始，复制length个元素，写入到当前缓冲区
-    // 用现有字节数组的子数组填充缓冲区
+    // 用现有字节数组的子数组填充缓冲区，如果从该数组中复制的字节多于此缓冲区中的剩余字节（length>remaning()），则不传输字节且将抛出异常
     public ByteBuffer put(byte[] src, int offset, int length) {
         checkBounds(offset, length, src.length);
         if(length > remaining())
@@ -1097,6 +1100,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @throws ReadOnlyBufferException  If this buffer is read-only
      */
     // 将源缓冲区src的内容全部写入到当前缓冲区
+    // 从每个缓冲区当前位置开始复制，然后这两个缓冲区的位置都增加
     public ByteBuffer put(ByteBuffer src) {
         if(src == this)
             throw createSameBufferException();
@@ -1368,6 +1372,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @return A new char buffer
      */
     // ByteBuffer转为CharBuffer
+    // 新缓冲区的内容将从此缓冲区的当前位置开始，新缓冲区的位置将为0，其容量和限制将为此缓冲区中所剩余的字节数的1/2
     public abstract CharBuffer asCharBuffer();
     
     /**
@@ -1388,6 +1393,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @return A new short buffer
      */
     // ByteBuffer转为ShortBuffer
+    // 新缓冲区的内容将从此缓冲区的当前位置开始，新缓冲区的位置将为0，其容量和界限将为此缓冲区中所剩余的字节数的1/2
     public abstract ShortBuffer asShortBuffer();
     
     /**
@@ -1408,6 +1414,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @return A new int buffer
      */
     // ByteBuffer转为IntBuffer
+    // 新缓冲区的内容将从此缓冲区的当前位置开始，新缓冲区的位置将为0，其容量和界限将为此缓冲区中所剩余的字节数的1/4
     public abstract IntBuffer asIntBuffer();
     
     /**
@@ -1428,6 +1435,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @return A new long buffer
      */
     // ByteBuffer转为LongBuffer
+    // 新缓冲区的内容将从此缓冲区的当前位置开始，新缓冲区的位置将为0，其容量和界限将为此缓冲区中所剩余的字节数的1/8
     public abstract LongBuffer asLongBuffer();
     
     /**
@@ -1448,6 +1456,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @return A new float buffer
      */
     // ByteBuffer转为FloatBuffer
+    // 新缓冲区的内容将从此缓冲区的当前位置开始，新缓冲区的位置将为0，其容量和界限将为此缓冲区中所剩余的字节数的1/8
     public abstract FloatBuffer asFloatBuffer();
     
     /**
@@ -1468,6 +1477,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @return A new double buffer
      */
     // ByteBuffer转为DoubleBuffer
+    // 新缓冲区的内容将从此缓冲区的当前位置开始，新缓冲区的位置将为0，其容量和界限将为此缓冲区中所剩余的字节数的1/4
     public abstract DoubleBuffer asDoubleBuffer();
     
     /*▲ asXXXBuffer ████████████████████████████████████████████████████████████████████████████████┛ */
@@ -1514,6 +1524,7 @@ public abstract class ByteBuffer extends Buffer implements Comparable<ByteBuffer
      * @throws ReadOnlyBufferException If this buffer is read-only
      */
     // 压缩缓冲区，将当前未读完的数据挪到容器起始处，可用于读模式到写模式的切换，但又不丢失之前读入的数据。
+    // 将缓冲区的当前位置和限制之间的字节复制到缓冲区的开始处，位置设置为remaning，限制设置为容量
     public abstract ByteBuffer compact();
     
     /*▲ 压缩 ████████████████████████████████████████████████████████████████████████████████┛ */

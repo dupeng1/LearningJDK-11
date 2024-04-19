@@ -225,9 +225,9 @@ public abstract class Buffer {
      * 【活跃区域】：[position, limit)范围的区域，这个区域是不断变化的
      * 【原始区域】：position的初始值和limit的初始值限定的区域，这个区域一般不变
      */
-    private int mark = -1;      // 标记。一个备忘位置。调用mark()来设定mark = postion。调用reset()设定position = mark。标记在设定前是未定义的(undefined)。
-    private int position = 0;   // 游标。下一个要被读或写的元素的索引。位置会自动由相应的get()和put()函数更新。
-    private int limit;          // 上界。缓冲区的第一个不能被读或写的元素。或者说，缓冲区中现存元素的计数。
+    private int mark = -1;      // 标记。一个【备忘位置】。调用mark()来设定mark = postion。调用reset()设定position = mark。标记在设定前是未定义的(undefined)。
+    private int position = 0;   // 游标。下一个要被【读或写】的元素的索引。位置会自动由相应的get()和put()函数更新。
+    private int limit;          // 上界。缓冲区的第一个【不能被读或写】的元素的索引。或者说，缓冲区中现存元素的计数。
     private int capacity;       // 容量。缓冲区能够容纳的数据元素的最大数量。这一容量在缓冲区创建时被设定，并且永远不能被改变。
     
     
@@ -308,6 +308,7 @@ public abstract class Buffer {
      * @return This buffer
      */
     // 在当前游标position处设置新的mark（备忘）
+    // 有些类似于探险或爬山时在关键路口设置路标，目的是在园路返回时找到回去的路
     public Buffer mark() {
         mark = position;
         return this;
@@ -399,6 +400,10 @@ public abstract class Buffer {
      * @return This buffer
      */
     // 清理缓冲区，重置标记
+    // 还原缓冲区到初始的状态，将位置设置为0，将限制设置为容量，并丢弃标记，即一切为默认
+    // 使用场景是在对缓冲区存储数据之前调用此方法
+    // 执行写入数据的代码，将最新版的数据有索引位置0开始覆盖，这样就将缓冲区的旧值用新值覆盖了，相当于数据被清除了
+    // 侧重点在【还原一切状态】
     public Buffer clear() {
         position = 0;
         limit = capacity;
@@ -428,6 +433,8 @@ public abstract class Buffer {
      * @return This buffer
      */
     // 修改标记，可以切换缓冲区读/写模式
+    // 使用场景是向缓冲区存储数据，然后再从缓冲区中读取这些数据前，改变limit和position的值
+    // 侧重点在【substring截取】
     public Buffer flip() {
         limit = position;
         position = 0;
@@ -451,6 +458,9 @@ public abstract class Buffer {
      * @return This buffer
      */
     // 丢弃备忘，游标归零
+    // 重新写入或获取之前调用此方法
+    // 使用场景是重新读取缓冲区数据时使用，例如将缓冲区remaning剩余空间的数据输出到通道，然后从缓冲区读取数据保存到数组中
+    // 类似于音乐倒带，侧重点在【重新】，在重新读取或重新写入时可以使用
     public Buffer rewind() {
         position = 0;
         mark = -1;

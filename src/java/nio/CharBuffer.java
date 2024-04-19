@@ -239,6 +239,7 @@ public abstract class CharBuffer extends Buffer implements Comparable<CharBuffer
      *                                   parameters do not hold
      */
     // 包装一个CharSequence到buffer（包装一部分）
+    // 将字符序列包装到缓冲区中，缓冲区的容量设置为csq.length，位置为start，限制为end
     public static CharBuffer wrap(CharSequence csq, int start, int end) {
         try {
             return new StringCharBuffer(csq, start, end);
@@ -456,6 +457,8 @@ public abstract class CharBuffer extends Buffer implements Comparable<CharBuffer
      *                                   do not hold
      */
     // 子副本，新缓冲区的【活跃区域】取自旧缓冲区【活跃区域】的[start，end)部分
+    // 相对于当前位置的新字符缓冲区
+    // 新缓冲区的容量将设置为此缓冲区的容量，位置设置为position+start，限制设置为position+end
     public abstract CharBuffer subSequence(int start, int end);
     
     /*▲ 创建新缓冲区，新旧缓冲区共享内部的存储容器 ████████████████████████████████████████████████████████████████████████████████┛ */
@@ -882,6 +885,7 @@ public abstract class CharBuffer extends Buffer implements Comparable<CharBuffer
      * @since 1.5
      */
     // 向buffer中添加CharSequence（添加一部分）
+    // 将指定字符序列的子序列添加到此缓冲区
     public CharBuffer append(CharSequence csq, int start, int end) {
         CharSequence cs = (csq == null ? "null" : csq);
         return put(cs.subSequence(start, end).toString());

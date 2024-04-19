@@ -647,6 +647,9 @@ public class Socket implements Closeable {
      * bindpoint: 【待绑定的地址】【(ip+port)】
      *
      * 注：【服务端Socket(通信)】会在accept期间完成绑定，故不会也不应再调用此方法
+     *
+     * 将套接字绑定到本地地址，如果地址为null，则系统将随机挑选一个空闲的端口和一个有效的本地地址来绑定套接字
+     * 将客户端绑定到指定的端口上，该方法要优先于connect方法执行，也就是先绑定本地端口再执行连接方法
      */
     public void bind(SocketAddress bindpoint) throws IOException {
         if(isClosed()) {
@@ -721,6 +724,8 @@ public class Socket implements Closeable {
      * 注：当不存在代理时，直接调用此方法完成[客户端Socket]到[服务端Socket(通信)]的连接；
      * 　　当存在正向代理时，依然需要按照不存在代理时的情形调用此方法，但是在系统内部，实际完成的是[客户端Socket]到代理端Socket的连接；
      * 　　当存在反向代理时，该方法会被【间接调用】，以完成[服务端Socket(通信)]到代理端Socket的连接
+     *
+     * 将套接字连接到服务端
      */
     public void connect(SocketAddress endpoint) throws IOException {
         connect(endpoint, 0);
@@ -757,6 +762,8 @@ public class Socket implements Closeable {
      * 注：当不存在代理时，直接调用此方法完成[客户端Socket]到[服务端Socket(通信)]的连接；
      * 　　当存在正向代理时，依然需要按照不存在代理时的情形调用此方法，但是在系统内部，实际完成的是[客户端Socket]到代理端Socket的连接；
      * 　　当存在反向代理时，该方法会被【间接调用】，以完成[服务端Socket(通信)]到代理端Socket的连接
+     *
+     * 将套接字连接到服务端，并指定一个超时值，超时值是0意味着无限超时，若时间超过timeout还没有连接到服务端，则出现异常
      */
     public void connect(SocketAddress endpoint, int timeout) throws IOException {
         if(endpoint == null) {
@@ -987,6 +994,8 @@ public class Socket implements Closeable {
      * @see #isClosed
      */
     // 关闭socket连接
+    // 套接字关闭后，便不可以在以后的网络连接中使用（即无法重新连接或重新绑定），如果想再次使用套接字，则需要创建新的套接字
+    // 关闭此套接字也将会关闭与该套接字的InputStream、OutputStream，如果此套接字有一个与之关联的通道，则关闭该通道
     public synchronized void close() throws IOException {
         synchronized(closeLock) {
             if(isClosed()) {
