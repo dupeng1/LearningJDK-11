@@ -247,7 +247,7 @@ public final class Method extends Executable {
     /**
      * {@inheritDoc}
      */
-    // 获取方法的修饰符
+    // 获取方法的修饰符，是一个int，不同的bit表示不同的含义
     @Override
     public int getModifiers() {
         return modifiers;
@@ -288,7 +288,7 @@ public final class Method extends Executable {
      *
      * @return the return type for the method this object represents
      */
-    // 获取返回值类型[类型擦除]
+    // 获取返回值类型[类型擦除]，Class实例，例如，String.class
     public Class<?> getReturnType() {
         return returnType;
     }
@@ -336,7 +336,7 @@ public final class Method extends Executable {
      * Returns the name of the method represented by this {@code Method}
      * object, as a {@code String}.
      */
-    // 返回方法名称，这与字符串化不同
+    // 返回方法名称，这与字符串化不同，例如，"getScore"
     @Override
     public String getName() {
         return name;
@@ -457,7 +457,7 @@ public final class Method extends Executable {
     /**
      * {@inheritDoc}
      */
-    // 获取所有形参的类型[类型擦除]
+    // 获取所有形参的类型[类型擦除]，Class数组，例如，{String.class, int.class}
     @Override
     public Class<?>[] getParameterTypes() {
         return parameterTypes.clone();

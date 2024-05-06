@@ -155,12 +155,19 @@ import sun.security.util.SecurityConstants;
  * @since 1.0
  */
 // 反射元素-类/接口
+// 1、Class实例是JVM内部创建的，Class类的构造方法是private，只有JVM能创建Class实例，我们自己的Java程序是无法创建Class实例的
+// 2、JVM为每个【加载的class】创建了对应的【Class实例】，包括类名、包名、父类、实现的接口、所有方法、字段等，
+// 因此，如果获取了某个Class实例，我们就可以通过这个Class实例获取到该实例对应的class的所有信息，这种通过Class实例获取class信息的方法称为反射
+// 3、Java反射就是在运行状态中，对于任意一个类，都能够知道这个类的所有属性和方法；对于任意一个对象，都能够调用它的任意方法和属性；并且能改变它的属性。
 public final class Class<T> implements Serializable, GenericDeclaration, Type, AnnotatedElement {
     /** use serialVersionUID from JDK 1.1 for interoperability */
+    // 序列化版本号
     private static final long serialVersionUID = 3206093459760846163L;
-    
+    // 标识注解类型
     private static final int ANNOTATION = 0x00002000;
+    // 标识枚举类型
     private static final int ENUM = 0x00004000;
+    // 表示该class文件并非由Java源代码所生成
     private static final int SYNTHETIC = 0x00001000;
     
     /**
@@ -195,20 +202,23 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
     
     
     /** protection domain returned when the internal domain is null */
+    // null值的安全返回
     private static ProtectionDomain allPermDomain;
     
     private static ReflectionFactory reflectionFactory;
-    
+    // 缓存构造器
     private transient volatile Constructor<T> cachedConstructor;
-    
+    // 调用者的缓存构造器
     private transient volatile Class<?> newInstanceCallerCache;
-    
+    // 反射信息
     private transient volatile SoftReference<ReflectionData<T>> reflectionData;
     
     // Incremented by the VM on each call to JVM TI RedefineClasses() that redefines this class or a superclass.
+    // 每次调用JVM时由VM递增
     private transient volatile int classRedefinedCount;
     
     // Generic info repository; lazily initialized
+    //通用信息
     private transient volatile ClassRepository genericInfo;
     
     private transient volatile T[] enumConstants;
@@ -223,6 +233,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
     private transient volatile AnnotationType annotationType;
     
     // cache the name to reduce the number of calls into the VM
+    // 实体的名称
     private transient String name;
     
     // set by VM
@@ -366,7 +377,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
     @CallerSensitive
     public static Class<?> forName(String className, boolean initialize, ClassLoader loader) throws ClassNotFoundException {
         Class<?> caller = null;
-        
+        // 获取安全管理器
         SecurityManager sm = System.getSecurityManager();
         if(sm != null) {
             /*
@@ -374,9 +385,12 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
              * Avoid the overhead of making this call otherwise.
              */
             caller = Reflection.getCallerClass();
+            // 如果传入的类加载器为null，则获取调用类的类加载器
             if(loader == null) {
+                // 获取调用类的类加载器
                 ClassLoader ccl = ClassLoader.getClassLoader(caller);
                 if(ccl != null) {
+                    // 使用安全管理器检查是否有获取类加载器的权限
                     sm.checkPermission(SecurityConstants.GET_CLASSLOADER_PERMISSION);
                 }
             }
@@ -516,6 +530,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         /* NOTE: the following code may not be strictly correct under the current Java memory model. */
         
         // Constructor lookup
+        // 检查有没有存在已加载过的构造器
         if(cachedConstructor == null) {
             if(this == Class.class) {
                 throw new IllegalAccessException("Can not call newInstance() on the Class for java.lang.Class");
@@ -523,7 +538,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
             
             try {
                 Class<?>[] empty = {};
-    
+                // 获取该类已经声明的的无参构造方法
                 final Constructor<T> c = getReflectionFactory().copyConstructor(getConstructor0(empty, Member.DECLARED));
     
                 /*
@@ -536,6 +551,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
                         return null;
                     }
                 });
+                // 将获取的无参构造方法缓存
                 cachedConstructor = c;
             } catch(NoSuchMethodException e) {
                 throw (InstantiationException) new InstantiationException(getName()).initCause(e);
@@ -547,6 +563,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         // Security check (same as in java.lang.reflect.Constructor)
         Class<?> caller = Reflection.getCallerClass();
         if(newInstanceCallerCache != caller) {
+            // 获取构造方法的语言修饰符，诸如public,private,static,final等
             int modifiers = tmpConstructor.getModifiers();
             Reflection.ensureMemberAccess(caller, this, this, modifiers);
             newInstanceCallerCache = caller;
@@ -554,6 +571,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         
         // Run constructor
         try {
+            // 调用无参构造的newInstance方法
             return tmpConstructor.newInstance((Object[]) null);
         } catch(InvocationTargetException e) {
             Unsafe.getUnsafe().throwException(e.getTargetException());
@@ -1064,6 +1082,10 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @return an array of interfaces directly implemented by this class
      */
     // 获取当前类的父接口，不包括父类/父接口实现的接口（只识别非泛型类型）
+    // 0）按声明顺序返回此类直接实现的所有接口
+    // 1）未直接实现任何接口，则返回长度为 0 的数组
+    // 2）原始类型返回长度为 0 的数组
+    // 3）数组返回 Cloneable 和 Serializable 组成的数组
     public Class<?>[] getInterfaces() {
         // defensively copy before handing over to user code
         return getInterfaces(true);
@@ -1191,6 +1213,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 获取当前类包含的内部类/接口，包含所有权限修饰符修饰的内部接口、内部抽象类、内部实例类，不会继承父类和父接口的内容
+    // 读取当前类中定义的所有成员类和接口
     @CallerSensitive
     public Class<?>[] getDeclaredClasses() throws SecurityException {
         SecurityManager sm = System.getSecurityManager();
@@ -1224,6 +1247,8 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 获取当前类包含的内部类/接口，仅包含public修饰的内部接口、内部抽象类、内部实例类，会继承父类内容，但不会继承父接口的内容
+    // 返回此类及其父类中定义的所有 public 成员类和接口。
+    // 未定义成员类和接口、原始数据类型、数组都返回长度为 0 的 Class[]。
     @CallerSensitive
     public Class<?>[] getClasses() {
         SecurityManager sm = System.getSecurityManager();
@@ -1242,11 +1267,13 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
                 List<Class<?>> list = new ArrayList<>();
                 Class<?> currentClass = Class.this;
                 while(currentClass != null) {
+                    // 获取当前类中定义的所有 public 成员类和接口
                     for(Class<?> m : currentClass.getDeclaredClasses()) {
                         if(Modifier.isPublic(m.getModifiers())) {
                             list.add(m);
                         }
                     }
+                    // 递归处理其父类
                     currentClass = currentClass.getSuperclass();
                 }
                 return list.toArray(new Class<?>[0]);
@@ -1547,10 +1574,12 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 返回当前类中所有public构造器，但不包括父类中的构造器
+    // 读取此类中定义的所有 public 构造函数
     @CallerSensitive
     public Constructor<?>[] getConstructors() throws SecurityException {
         SecurityManager sm = System.getSecurityManager();
         if(sm != null) {
+            // 检查是否允许访问。如果访问被拒绝，则抛出SecurityException。
             checkMemberAccess(sm, Member.PUBLIC, Reflection.getCallerClass(), true);
         }
     
@@ -1587,6 +1616,8 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 返回当前类中指定形参的public构造器，但不包括父类中的构造器
+    // 读取带有指定类型参数列表的 public 构造函数
+    // parameterTypes    参数类型列表
     @CallerSensitive
     public Constructor<T> getConstructor(Class<?>... parameterTypes) throws NoSuchMethodException, SecurityException {
         SecurityManager sm = System.getSecurityManager();
@@ -1635,6 +1666,9 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 返回当前类中所有构造器，但不包括父类中的构造器
+    // 获得被(protected,default,private)修饰的构造方法
+    // 所以反射在一定程度上破坏了java的封装特性
+    // 读取此类中定义的所有构造函数
     @CallerSensitive
     public Constructor<?>[] getDeclaredConstructors() throws SecurityException {
         SecurityManager sm = System.getSecurityManager();
@@ -1684,6 +1718,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 返回当前类中指定形参的构造器，但不包括父类中的构造器
+    // 读取带有指定类型参数列表的 public 构造函数
     @CallerSensitive
     public Constructor<T> getDeclaredConstructor(Class<?>... parameterTypes) throws NoSuchMethodException, SecurityException {
         SecurityManager sm = System.getSecurityManager();
@@ -1863,6 +1898,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * 特别地，如果当前类是实例类，则无法获取父接口中的static方法（该方法虽然是public，但只有父接口可视）
      * 对于父接口中的default方法，无论子类是否重写，这里均可以获取到它
      */
+    // 读取此类中定义的所有 public 方法，包括递归从父类和父接口中继承的 public 方法
     @CallerSensitive
     public Method[] getMethods() throws SecurityException {
         SecurityManager sm = System.getSecurityManager();
@@ -1970,6 +2006,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * 特别地，如果当前类是实例类，则无法获取父接口中的static方法（该方法虽然是public，但只有父接口可视）
      * 对于父接口中的default方法，无论子类是否重写，这里均可以获取到它
      */
+    // 读取名称为 name，并带有指定参数列表的方法
     @CallerSensitive
     public Method getMethod(String name, Class<?>... parameterTypes) throws NoSuchMethodException, SecurityException {
         Objects.requireNonNull(name);
@@ -2038,6 +2075,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 返回当前类中所有方法，但不包括父类/父接口中的方法
+    // 返回类中声明的方法，核心实现在privateGetDeclaredMethods和copyMethods中
     @CallerSensitive
     public Method[] getDeclaredMethods() throws SecurityException {
         SecurityManager sm = System.getSecurityManager();
@@ -2097,15 +2135,17 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 返回当前类中指定名称和形参的方法，但不包括父类/父接口中的方法
+    // 读取此类中名称为 name 并且具有指定类型参数列表的方法
     @CallerSensitive
     public Method getDeclaredMethod(String name, Class<?>... parameterTypes) throws NoSuchMethodException, SecurityException {
         Objects.requireNonNull(name);
     
         SecurityManager sm = System.getSecurityManager();
         if(sm != null) {
+            // 检查方法的修饰符
             checkMemberAccess(sm, Member.DECLARED, Reflection.getCallerClass(), true);
         }
-    
+        // searchMethods()方法的第一个参数确定这个方法是不是私有方法，第二个参数我们定义的方法名，第三个参数就是传入的方法的参数类型
         Method method = searchMethods(privateGetDeclaredMethods(false), name, parameterTypes);
         if(method == null) {
             throw new NoSuchMethodException(methodToString(name, parameterTypes));
@@ -2243,10 +2283,13 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 返回当前类中所有public字段，包括父类/父接口中的public字段
+    // 获取所有public的field（包括父类）
+    // 返回此类及其递归父类和接口中定义的所有 public 字段
     @CallerSensitive
     public Field[] getFields() throws SecurityException {
         SecurityManager sm = System.getSecurityManager();
         if(sm != null) {
+            // 检查是否允许访问。如果访问被拒绝，则抛出SecurityException。
             checkMemberAccess(sm, Member.PUBLIC, Reflection.getCallerClass(), true);
         }
     
@@ -2296,6 +2339,8 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 返回当前类中指定名称的public字段，包括父类/父接口中的public字段
+    // 根据字段名获取某个public的field（包括父类）
+    // 读取指定名称的 public 字段
     @CallerSensitive
     public Field getField(String name) throws NoSuchFieldException, SecurityException {
         Objects.requireNonNull(name);
@@ -2355,6 +2400,8 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 返回当前类中所有字段，但不包括父类/父接口中的字段
+    // 获取当前类的所有field（不包括父类）
+    // 读取此类中直接定义的所有字段
     @CallerSensitive
     public Field[] getDeclaredFields() throws SecurityException {
         SecurityManager sm = System.getSecurityManager();
@@ -2406,6 +2453,8 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.1
      */
     // 返回当前类中指定名称的字段，但不包括父类/父接口中的字段
+    // 根据字段名获取当前类的某个field（不包括父类）
+    // 读取此类中指定名称的字段
     @CallerSensitive
     public Field getDeclaredField(String name) throws NoSuchFieldException, SecurityException {
         Objects.requireNonNull(name);
@@ -2433,6 +2482,9 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.5
      */
     // 1-1 返回该类上所有类型的注解，包括继承来的注解
+    // 读取此类上保留策略为 RetentionPolicy.RUNTIME 的所有直接注解，
+    // 递归读取父类中保留策略为 RetentionPolicy.RUNTIME 并且带有 @Inherited 的所有注解
+    // 顶层父类的注解优先读取。
     public Annotation[] getAnnotations() {
         return AnnotationParser.toArray(annotationData().annotations);
     }
@@ -2442,6 +2494,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.5
      */
     // 1-2 返回该类上指定类型的注解，包括继承来的注解
+    // 读取指定类型的注解
     @SuppressWarnings("unchecked")
     public <A extends Annotation> A getAnnotation(Class<A> annotationClass) {
         Objects.requireNonNull(annotationClass);
@@ -2473,6 +2526,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.5
      */
     // 2-1 返回该类上所有类型的注解，不包括继承来的注解
+    // 读取此类上保留策略为 RetentionPolicy.RUNTIME 的所有直接注解
     public Annotation[] getDeclaredAnnotations() {
         return AnnotationParser.toArray(annotationData().declaredAnnotations);
     }
@@ -2482,6 +2536,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.8
      */
     // 2-2 返回该类上指定类型的注解，不包括继承来的注解
+    // 读取此类上保留策略为 RetentionPolicy.RUNTIME 的指定类型的注解
     @Override
     @SuppressWarnings("unchecked")
     public <A extends Annotation> A getDeclaredAnnotation(Class<A> annotationClass) {
@@ -2502,6 +2557,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * 1. 此方法可以处理标记为@Repeatable的注解，对于多个@Repeatable注解，将其放到一个数组中返回
      * 2. 对于非@Repeatable注解，该方法也将其放入数组中返回，但getDeclaredAnnotation()方法可以直接将其返回
      */
+    // 获取此类直接的或间接的指定类型的所有注解
     @Override
     public <A extends Annotation> A[] getDeclaredAnnotationsByType(Class<A> annotationClass) {
         Objects.requireNonNull(annotationClass);
@@ -2942,6 +2998,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      */
     // 获取当前类所在的包的Package信息
     public Package getPackage() {
+        // 原始类型和数组无 Package
         if(isPrimitive() || isArray()) {
             return null;
         }
@@ -2981,6 +3038,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 9
      */
     // 获取Package名称
+    // 返回此类的全限定包名
     public String getPackageName() {
         String pn = this.packageName;
         if(pn != null) {
@@ -2988,14 +3046,17 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         }
     
         Class<?> c = this;
+        // 1）获取数组的最底层组件类型
         while(c.isArray()) {
             c = c.getComponentType();
         }
-    
+        // 2）如果是原始类型
         if(c.isPrimitive()) {
             pn = "java.lang";
         } else {
+            // 3）获取组件名称
             String cn = c.getName();
+            // 尝试截取包名称
             int dot = cn.lastIndexOf('.');
             pn = (dot != -1) ? cn.substring(0, dot).intern() : "";
         }
@@ -3171,9 +3232,12 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.5
      */
     // 将非空的obj转换为该类型代表的类或接口（要保证兼容性）
+    // 将给定的类转换为当前Class所代表的类
     @SuppressWarnings("unchecked")
     @HotSpotIntrinsicCandidate
     public T cast(Object obj) {
+        // obj不为null，并且可以被转换为当前Class代表的类
+        // isInstance为native方法，类似于instanceOf的作用
         if(obj != null && !isInstance(obj)) {
             throw new ClassCastException(cannotCastMsg(obj));
         }
@@ -3205,6 +3269,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * @since 1.5
      */
     // 如果clazz类型是当前类的父类/父接口，则返回父类型
+    // 将类转换为它的子类Class
     @SuppressWarnings("unchecked")
     public <U> Class<? extends U> asSubclass(Class<U> clazz) {
         // 如果当前类型的对象不是clazz类型的实例，则会抛异常
@@ -3329,6 +3394,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
     
     
     /** Called after security check for system loader access checks have been made. */
+    // 根据指定类完全限定名，以及类加载器完成类的加载，如果需要还执行类的初始化操作
     private static native Class<?> forName0(String className, boolean initialize, ClassLoader loader, Class<?> caller) throws ClassNotFoundException;
     
     /**
@@ -3469,6 +3535,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
     // This method does not copy the returned Field object!
     private static Field searchFields(Field[] fields, String name) {
         for(Field field : fields) {
+            // 当前字段的名称和 name 相等
             if(field.getName().equals(name)) {
                 return field;
             }
@@ -3478,10 +3545,13 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
     }
     
     // This method does not copy the returned Method object!
+    // 这个方法就是通过传入的方法名找到我们定义的方法，然后使用了Method的copy()方法返回一个Method的实例，
+    // 我们通过操作mehtod这个实例就可以操作我们定义的方法。
     private static Method searchMethods(Method[] methods, String name, Class<?>[] parameterTypes) {
         ReflectionFactory fact = getReflectionFactory();
         Method res = null;
         for(Method m : methods) {
+            // 方法名称一致 && 参数类型列表一致 && 返回值类型兼容
             if(m.getName().equals(name) && arrayContentsEq(parameterTypes, fact.getExecutableSharedParameterTypes(m)) && (res == null || (res.getReturnType() != m.getReturnType() && res.getReturnType().isAssignableFrom(m.getReturnType())))) {
                 res = m;
             }
@@ -3510,16 +3580,22 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         
         return true;
     }
-    
+    // 拷贝字段数组，使用ReflectionFactory来拷贝
+    // 个人理解之所以需要拷贝是因为不想让获取的字段被随意修改
     private static Field[] copyFields(Field[] arg) {
+        // 声明一个Filed的数组，用来存储类的字段
         Field[] out = new Field[arg.length];
+        // 使用ReflectionFactory构造一个对象，也是不使用构造方法构造对象的一种方式。
         ReflectionFactory fact = getReflectionFactory();
+        // 遍历，将字段复制后返回。
         for(int i = 0; i<arg.length; i++) {
             out[i] = fact.copyField(arg[i]);
         }
         return out;
     }
-    
+
+    // 拷贝方法数组，使用ReflectionFactory来拷贝
+    // 个人理解之所以需要拷贝是因为不想让获取的方法被随意修改
     private static Method[] copyMethods(Method[] arg) {
         Method[] out = new Method[arg.length];
         ReflectionFactory fact = getReflectionFactory();
@@ -3530,8 +3606,12 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
     }
     
     private static <U> Constructor<U>[] copyConstructors(Constructor<U>[] arg) {
+        // 使用克隆，得到当前类的所有构造函数
         Constructor<U>[] out = arg.clone();
+        // 使用ReflectionFactory构造一个对象，也是不使用构造方法构造对象的一种方式。
         ReflectionFactory fact = getReflectionFactory();
+        // 遍历，将构造函数进行拷贝返回，注意在调用fact.copyConstructor(out[i])这个方法的时候，
+        // 还会进行安全检查，用的就是下面的LangReflectAccess() 这个方法。
         for(int i = 0; i<out.length; i++) {
             out[i] = fact.copyConstructor(out[i]);
         }
@@ -3548,7 +3628,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         }
         return reflectionFactory;
     }
-    
+    // 注册本地方法
     private static native void registerNatives();
     
     private native String getName0();
@@ -3559,7 +3639,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
             // no cloning required
             return getInterfaces0();
         }
-    
+        // 尝试从缓存中读取
         Class<?>[] interfaces = rd.interfaces;
         if(interfaces == null) {
             interfaces = getInterfaces0();
@@ -3724,6 +3804,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      *
      * <p> NOTE: should only be called if a SecurityManager is installed
      */
+    // 检查客户端是否有成员的访问权限
     private void checkMemberAccess(SecurityManager sm, int which, Class<?> caller, boolean checkProxyInterfaces) {
         /*
          * Default policy allows access to all {@link Member#PUBLIC} members,
@@ -3883,6 +3964,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      */
     private Field[] privateGetPublicFields() {
         Field[] res;
+        // 尝试从缓存中读取
         ReflectionData<T> rd = reflectionData();
         if(rd != null) {
             res = rd.publicFields;
@@ -3896,14 +3978,17 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         LinkedHashSet<Field> fields = new LinkedHashSet<>();
         
         // Local fields
+        // 此类中定义的 public 属性
         addAll(fields, privateGetDeclaredFields(true));
         
         // Direct superinterfaces, recursively
+        // 递归的接口中
         for(Class<?> si : getInterfaces()) {
             addAll(fields, si.privateGetPublicFields());
         }
         
         // Direct superclass, recursively
+        // 递归的父类中
         Class<?> sc = getSuperclass();
         if(sc != null) {
             addAll(fields, sc.privateGetPublicFields());
@@ -3922,9 +4007,12 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * These Constructor objects must NOT be propagated to the outside world, but must instead be copied via ReflectionFactory.copyConstructor.
      */
     private Constructor<T>[] privateGetDeclaredConstructors(boolean publicOnly) {
+        // 检查是否已被初始化，如果否，则进行安全检查
         Constructor<T>[] res;
+        // 反射的数据
         ReflectionData<T> rd = reflectionData();
         if(rd != null) {
+            // 只读取 public　构造函数还是所有声明的构造函数
             res = publicOnly ? rd.publicConstructors : rd.declaredConstructors;
             if(res != null) {
                 return res;
@@ -3932,11 +4020,13 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         }
     
         // No cached value available; request value from VM
+        // 检查是否是接口
         if(isInterface()) {
             @SuppressWarnings("unchecked")
             Constructor<T>[] temporaryRes = (Constructor<T>[]) new Constructor<?>[0];
             res = temporaryRes;
         } else {
+            //底层调用的是本地方法
             res = getDeclaredConstructors0(publicOnly);
         }
     
@@ -3955,8 +4045,10 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * Returns an array of "root" methods.
      * These Method objects must NOT be propagated to the outside world, but must instead be copied via ReflectionFactory.copyMethod.
      */
+    // 获取类中声明方法的具体实现，publicOnly：是否只获取public方法
     private Method[] privateGetDeclaredMethods(boolean publicOnly) {
         Method[] res;
+        // 1）尝试从缓存中读取
         ReflectionData<T> rd = reflectionData();
         if(rd != null) {
             res = publicOnly ? rd.declaredPublicMethods : rd.declaredMethods;
@@ -3966,7 +4058,9 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         }
     
         // No cached value available; request value from VM
+        // 从 VM 中查找结果
         res = Reflection.filterMethods(this, getDeclaredMethods0(publicOnly));
+        // 如果存在缓存，则写入
         if(rd != null) {
             if(publicOnly) {
                 rd.declaredPublicMethods = res;
@@ -3983,6 +4077,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      */
     private Method[] privateGetPublicMethods() {
         Method[] res;
+        // 1）尝试从缓存中读取
         ReflectionData<T> rd = reflectionData();
         if(rd != null) {
             res = rd.publicMethods;
@@ -3993,12 +4088,14 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         
         // No cached value available; compute value recursively.
         // Start by fetching public declared methods...
+        // 2）无缓存，读取此类中声明的所有 public 方法
         PublicMethods pms = new PublicMethods();
         for(Method m : privateGetDeclaredMethods(/* publicOnly */ true)) {
             pms.merge(m);
         }
     
         // ...then recur over superclass methods...
+        // 3）递归处理父类中的 public 方法
         Class<?> sc = getSuperclass();
         if(sc != null) {
             for(Method m : sc.privateGetPublicMethods()) {
@@ -4007,6 +4104,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         }
     
         // ...and finally over direct superinterfaces.
+        // 4）递归处理父接口
         for(Class<?> intf : getInterfaces(/* cloneArray */ false)) {
             for(Method m : intf.privateGetPublicMethods()) {
                 // static interface methods are not inherited
@@ -4017,6 +4115,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         }
         
         res = pms.toArray();
+        // 如果启用了缓存则写入
         if(rd != null) {
             rd.publicMethods = res;
         }
@@ -4076,17 +4175,20 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      */
     private PublicMethods.MethodList getMethodsRecursive(String name, Class<?>[] parameterTypes, boolean includeStatic) {
         // 1st check declared public methods
+        // 1）读取所有声明的 public 方法
         Method[] methods = privateGetDeclaredMethods(/* publicOnly */ true);
         PublicMethods.MethodList res = PublicMethods.MethodList.filter(methods, name, parameterTypes, includeStatic);
         // if there is at least one match among declared methods, we need not
         // search any further as such match surely overrides matching methods
         // declared in superclass(es) or interface(s).
+        // 找到匹配方法，则直接返回
         if(res != null) {
             return res;
         }
         
         // if there was no match among declared methods,
         // we must consult the superclass (if any) recursively...
+        // 递归从父类中查找
         Class<?> sc = getSuperclass();
         if(sc != null) {
             res = sc.getMethodsRecursive(name, parameterTypes, includeStatic);
@@ -4094,6 +4196,7 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
         
         // ...and coalesce the superclass methods with methods obtained
         // from directly implemented interfaces excluding static methods...
+        // 递归从接口中查找
         for(Class<?> intf : getInterfaces(/* cloneArray */ false)) {
             res = PublicMethods.MethodList.merge(res, intf.getMethodsRecursive(name, parameterTypes,
                 /* includeStatic */ false));
@@ -4106,10 +4209,14 @@ public final class Class<T> implements Serializable, GenericDeclaration, Type, A
      * Returns a "root" Constructor object.
      * This Constructor object must NOT be propagated to the outside world, but must instead be copied via ReflectionFactory.copyConstructor.
      */
+    // 读取指定带有指定参数类型列表的构造函数
+    // parameterTypes    参数类型列表
     private Constructor<T> getConstructor0(Class<?>[] parameterTypes, int which) throws NoSuchMethodException {
         ReflectionFactory fact = getReflectionFactory();
+        // 获取构造函数，重点看这个方法，参数是false
         Constructor<T>[] constructors = privateGetDeclaredConstructors((which == Member.PUBLIC));
         for(Constructor<T> constructor : constructors) {
+            // 数组内容相同
             if(arrayContentsEq(parameterTypes, fact.getExecutableSharedParameterTypes(constructor))) {
                 return constructor;
             }

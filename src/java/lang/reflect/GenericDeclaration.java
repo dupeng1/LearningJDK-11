@@ -31,6 +31,9 @@ package java.lang.reflect;
  * @since 1.5
  */
 // 泛型元素，指有能力引入泛型声明的元素，比如类、方法、构造器
+// 1、可以声明类型变量的实体的公共接口，也就是说，只有实现了该接口才能在对应的实体上声明（定义）类型变量，
+// 2、用来定义哪些对象上是可以声明（定义）范型变量，所谓范型变量就是<E extends List>或者<E>, 也就是TypeVariable<D>这个接口的对应的对象
+// 3、实现GenericDeclaration接口的类包括Class, Method, Constructor，也就是说只能在这几种对象上进行范型变量的声明（定义）
 public interface GenericDeclaration extends AnnotatedElement {
     /**
      * Returns an array of {@code TypeVariable} objects that
@@ -48,5 +51,6 @@ public interface GenericDeclaration extends AnnotatedElement {
      *                                     <cite>The Java&trade; Virtual Machine Specification</cite>
      */
     // 返回generic type中的type variable，如：Map<K, V>中的K和V
+    // 获得声明列表上的类型变量数组
     public TypeVariable<?>[] getTypeParameters();
 }

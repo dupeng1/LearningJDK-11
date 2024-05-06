@@ -41,6 +41,9 @@ import java.util.Objects;
  * @since 1.8
  */
 // 形参
+// 1、通过Class对象获取其方法或构造器的参数Parameter对象
+// 首先获取Class对象，然后获取Method（或者Constructor）对象，然后通过getParameters()获取Parameter对象数组，最终获得参数Parameter对象
+// 2、通过Parameter获取相关信息：参数名、修饰符、参数类型、参数化类型、可变参数、注解
 public final class Parameter implements AnnotatedElement {
     private final String name;
     private final int modifiers;

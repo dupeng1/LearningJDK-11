@@ -42,6 +42,7 @@ package java.lang.reflect;
  * WildcardType
  * GenericArrayType
  */
+// Type是java中【所有类型】的通用超级接口，这些类型包括基本类型、参数化类型、数组类型、类型变量
 public interface Type {
     /**
      * Returns a string describing this type, including information about any type parameters.

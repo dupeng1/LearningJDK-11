@@ -875,7 +875,7 @@ public final class Field extends AccessibleObject implements Member {
      *
      * @see Modifier
      */
-    // 获取方法的修饰符
+    // 获取方法的修饰符，它是一个int，不同bit表示不同含义
     public int getModifiers() {
         return modifiers;
     }
@@ -894,7 +894,7 @@ public final class Field extends AccessibleObject implements Member {
      * @return a {@code Class} object identifying the declared
      * type of the field represented by this object
      */
-    // 获取字段类型[类型擦除]
+    // 获取字段类型[类型擦除]，也是一个Class实例，例如，String.class
     public Class<?> getType() {
         return type;
     }
@@ -942,7 +942,7 @@ public final class Field extends AccessibleObject implements Member {
     /**
      * Returns the name of the field represented by this {@code Field} object.
      */
-    // 返回字段名称，这与字符串化不同
+    // 返回字段名称，这与字符串化不同，例如，“name”
     public String getName() {
         return name;
     }

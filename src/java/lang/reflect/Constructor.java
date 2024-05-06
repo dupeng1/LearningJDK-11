@@ -62,15 +62,17 @@ import sun.reflect.generics.scope.ConstructorScope;
  */
 // 反射元素-构造器
 public final class Constructor<T> extends Executable {
-    
+    //真正实现功能的类,当前类只是它的代理
     private volatile ConstructorAccessor constructorAccessor;   // 构造器访问器，用于对构造器的反射调用
     
     private int slot;   // 当前构造器在宿主类构造器中的序号
-    
+    //声明此构造函数的类对象
     private Class<T> clazz; // 当前构造器所在的类
-    
+    //参数列表数组
     private Class<?>[] parameterTypes;  // 构造器的形参列表
+    //异常数组
     private Class<?>[] exceptionTypes;  // 构造器抛出的异常列表
+    //修饰符
     private int modifiers;              // 构造器的修饰符
     
     // Generics and annotations support
@@ -88,6 +90,7 @@ public final class Constructor<T> extends Executable {
      * If this branching structure would ever contain cycles, deadlocks can occur in annotation code.
      */
     // 如果当前Constructor是复制来的，此处保存它的复制源
+    // 由copy来的对象，会保留原对象的引用
     private Constructor<T> root;
     
     
@@ -203,6 +206,9 @@ public final class Constructor<T> extends Executable {
      * @throws ExceptionInInitializerError if the initialization provoked
      *                                     by this method fails.
      */
+    // 此类最重要的方法
+    // 构造一个类的实例，如果构造函数是无参的，传入的数组为null或长度为0
+    // 原始类型的参数需要封装成其包装类
     // 通过反射创建对象，要求参数与构造器匹配
     @CallerSensitive
     @ForceInline
@@ -226,7 +232,8 @@ public final class Constructor<T> extends Executable {
             // 获取当前构造器的访问器
             ca = acquireConstructorAccessor();
         }
-    
+
+        // Constructor只是代理类，实现创建对象的操作是在ConstructorAccessor中
         @SuppressWarnings("unchecked")
         T inst = (T) ca.newInstance(initargs);
     
@@ -430,7 +437,7 @@ public final class Constructor<T> extends Executable {
     /**
      * {@inheritDoc}
      */
-    // 获取该构造器抛出的异常类型[类型擦除]
+    // 获取该构造器抛出的异常类型[类型擦除]，如果没有定义异常，则返回0长度数组
     @Override
     public Class<?>[] getExceptionTypes() {
         return exceptionTypes.clone();
@@ -593,13 +600,19 @@ public final class Constructor<T> extends Executable {
      * the same if they were declared by the same class and have the
      * same formal parameter types.
      */
+    // 判断指定对象obj是否与当前构造函数对象相等
     public boolean equals(Object obj) {
+        // 对象不为null，且为构造函数对象
         if(obj != null && obj instanceof Constructor) {
+            // 转型
             Constructor<?> other = (Constructor<?>) obj;
+            // 两对象的定义类相等，这时他们的名称也一定相等
             if(getDeclaringClass() == other.getDeclaringClass()) {
+                // 比较参数列表
                 return equalParamTypes(parameterTypes, other.parameterTypes);
             }
         }
+        // 两个对象不等
         return false;
     }
     
@@ -608,10 +621,11 @@ public final class Constructor<T> extends Executable {
      * the same as the hashcode for the underlying constructor's
      * declaring class name.
      */
+    // 返回hashCode
     public int hashCode() {
         return getDeclaringClass().getName().hashCode();
     }
-    
+
     
     
     
@@ -627,6 +641,7 @@ public final class Constructor<T> extends Executable {
      * ReflectAccess) which returns a copy of this Constructor. The copy's
      * "root" field points to this Constructor.
      */
+    // 返回当前构造函数对象的一个拷贝
     Constructor<T> copy() {
         // This routine enables sharing of ConstructorAccessor objects
         // among Constructor objects which refer to the same underlying
@@ -637,10 +652,12 @@ public final class Constructor<T> extends Executable {
         // objects.)
         if(this.root != null)
             throw new IllegalArgumentException("Can not copy a non-root Constructor");
-        
+        // 用此对象的数据生成新的构造函数对象
         Constructor<T> res = new Constructor<>(clazz, parameterTypes, exceptionTypes, modifiers, slot, signature, annotations, parameterAnnotations);
+        // 新构造函数的root指向自己
         res.root = this;
         // Might as well eagerly propagate this if already present
+        // 与新的构造函数对象共享ConstructorAccessor
         res.constructorAccessor = constructorAccessor;
         return res;
     }
@@ -700,10 +717,13 @@ public final class Constructor<T> extends Executable {
     
     /** Sets the ConstructorAccessor for this Constructor object and (recursively) its root */
     // 为当前构造器设置访问器
+    // 设置当前的constructorAccessor对象，上层的constructorAccessor对象都改变
     void setConstructorAccessor(ConstructorAccessor accessor) {
+        // 将当前的constructorAccessor对象置为新的ConstructorAccessor对象
         constructorAccessor = accessor;
         
         // Propagate up
+        // 递归调用上层的设置ConstructorAccessor对象的方法
         if(root != null) {
             root.setConstructorAccessor(accessor);
         }
@@ -743,6 +763,7 @@ public final class Constructor<T> extends Executable {
     }
     
     // Returns ConstructorAccessor for this Constructor object, not looking up the chain to the root
+    // 直接返回onstructorAccessor
     ConstructorAccessor getConstructorAccessor() {
         return constructorAccessor;
     }
@@ -773,8 +794,10 @@ public final class Constructor<T> extends Executable {
     private ConstructorAccessor acquireConstructorAccessor() {
         // First check to see if one has been created yet, and take it if so.
         ConstructorAccessor tmp = null;
-    
+        // 取得上层的ConstructorAccessor
         if(root != null) {
+            // 如果上层的ConstructorAccessor不为空，则将上层的
+            // ConstructorAccessor赋给当前的ConstructorAccessor，并返回
             tmp = root.getConstructorAccessor();
         }
     
@@ -782,6 +805,7 @@ public final class Constructor<T> extends Executable {
             constructorAccessor = tmp;
         } else {
             /* Otherwise fabricate one and propagate it up to the root */
+            // 上层没有则创建一个
             tmp = reflectionFactory.newConstructorAccessor(this);
         
             setConstructorAccessor(tmp);

@@ -49,7 +49,17 @@ package java.lang.reflect;
  * @since 1.5
  */
 /*
- * 类型变量
+ * 1、类型变量，描述类型，表示泛指任意或相关一类类型，也可以说狭义上的【泛型】（泛指某一类类型），一般用大写字母作为变量，比如K、V、E
+ *
+ * 2、所谓类型变量就是<E extends List>或者<E>, 也就是TypeVariable<D>这个接口的对应的对象，
+ *
+ * 3、类型变量的声明：<E>，前后需要加上尖括号
+ *
+ * 4、TypeVariable<D>中的D是extends GenericDeclaration的，用来通过类型变量反向获取拥有这个变量的GenericDeclaration
+ *
+ * 5、泛型信息在编译时会被转换成一个特定的类型，而TypeVariable就是用来反应JVM编辑该泛型前的信息（通俗讲TypeVariable就是我们常用的
+ * List<T>、Map<K,V>中的T，K这种泛型变量），还可以对类型变量加上extends限定，这样会有类型变量对应的上限；值得注意的是类型变量的上限
+ * 可以有多个，必须使用&连接，例如：List<T extends Number & Serializable>，其中&后必须是接口
  *
  * 示例：
  * public class Bean<X, Y extends Number> {
@@ -79,6 +89,7 @@ public interface TypeVariable<D extends GenericDeclaration> extends Type, Annota
      *                                             for any reason
      */
     // 类型变量的边界（上界）
+    // 获得泛型的上限，若未明确声明上边界则默认为Object
     Type[] getBounds();
     
     /**
@@ -90,6 +101,7 @@ public interface TypeVariable<D extends GenericDeclaration> extends Type, Annota
      * @since 1.5
      */
     // 类型变量所属的泛型声明
+    // 获得声明这个类型变量的类型及名称
     D getGenericDeclaration();
     
     /**
@@ -98,6 +110,7 @@ public interface TypeVariable<D extends GenericDeclaration> extends Type, Annota
      * @return the name of this type variable, as it appears in the source code
      */
     // 类型变量名称
+    // 获得名称，即K、V、E之类名称
     String getName();
     
     /**

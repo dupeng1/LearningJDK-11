@@ -31,7 +31,7 @@ package java.lang.reflect;
  *
  * @since 1.5
  */
-// 通配符
+// 通配符表达式，泛型表达式，
 public interface WildcardType extends Type {
     /**
      * Returns an array of {@code Type} objects representing the  upper
@@ -55,7 +55,7 @@ public interface WildcardType extends Type {
      *                                             bounds refer to a parameterized type that cannot be instantiated
      *                                             for any reason
      */
-    // 通配符上界
+    // 通配符上界，获得泛型表达式上届（上限）
     Type[] getUpperBounds();
     
     /**
@@ -81,7 +81,7 @@ public interface WildcardType extends Type {
      *                                             bounds refer to a parameterized type that cannot be instantiated
      *                                             for any reason
      */
-    // 通配符下界
+    // 通配符下界，获得泛型表达式下届（下限）
     Type[] getLowerBounds();
     
     // one or many? Up to language spec; currently only one, but this API allows for generalization.

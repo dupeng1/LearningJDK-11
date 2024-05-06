@@ -44,7 +44,7 @@ package java.lang.reflect;
  * @since 1.5
  */
 /*
- * 参数化类型
+ * 参数化类型，形如：Object<T, K>、List<Integer>，即常说的泛型
  *
  * 示例：
  * Map.Entry<Integer, Thread> entry = null;
@@ -71,6 +71,13 @@ public interface ParameterizedType extends Type {
      * @since 1.5
      */
     // 参数化类型中的实际参数（argument）
+    // 获得参数化类型<>中的类型参数的类型，因为可能有多个类型参数，例如Map<K, V>，所以返回的是一个Type[]数组
+    // 无论<>中有几层<>嵌套，这个方法仅仅脱去最外层的<>，之后剩下的内容就作为这个方法的返回值，所以其返回值类型不一定。
+    // 1、List<ArrayList> a1;//这里返回的是，ArrayList，Class类型
+    // 2、List<ArrayList<String>> a2;//这里返回的是ArrayList<String>，ParameterizedType类型
+    // 3、List<T> a3;//返回的是T，TypeVariable类型
+    // 4、List<? extends Number> a4; //返回的是WildcardType类型
+    // 5、List<ArrayList<String>[]> a5;//GenericArrayType
     Type[] getActualTypeArguments();
     
     /**
@@ -83,6 +90,7 @@ public interface ParameterizedType extends Type {
      * @since 1.5
      */
     // 擦除泛型后的原始类型
+    // 获得参数化类型<>前面实际类型，即Map<K ,V>的Map
     Type getRawType();
     
     /**
@@ -104,5 +112,6 @@ public interface ParameterizedType extends Type {
      * @since 1.5
      */
     // 泛型复合类型的"外层类型
+    // 如果这个类型是某个类型所属，获得这个所有者类型，否则返回null
     Type getOwnerType();
 }

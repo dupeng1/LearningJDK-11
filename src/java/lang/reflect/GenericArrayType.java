@@ -31,7 +31,7 @@ package java.lang.reflect;
  *
  * @since 1.5
  */
-// 泛型数组
+// 泛型数组，带有泛型的数组，描述的是形如：A<T>[]或T[]类型
 public interface GenericArrayType extends Type {
     /**
      * Returns a {@code Type} object representing the component type
@@ -52,5 +52,6 @@ public interface GenericArrayType extends Type {
      *                                             parameterized type that cannot be instantiated for any reason
      */
     // 泛型数组的外层类型，如T之于T[]，T[]之于T[][]
+    // 获得这个数组元素类型，即获得：A<T>（A<T>[]）或T（T[]）
     Type getGenericComponentType();
 }
