@@ -74,6 +74,10 @@ import java.util.concurrent.locks.LockSupport;
  *
  * 除了作为独立的类使用，该类还定义了一些protected方法，以方便自定义子类。
  */
+// 1、Future只是一个接口，而FutureTask实现了这个接口，同时还实现了Runnalbe接口，
+// 2、这样FutureTask就相当于是消费者和生产者的桥梁了，消费者可以通过FutureTask存储任务的执行结果，跟新任务的状态：未开始、处理中、已完成、已取消等等
+// 3、而任务的生产者可以拿到FutureTask被转型为Future接口，可以阻塞式的获取处理结果，非阻塞式获取任务处理状态
+// 4、FutureTask既可以被当作Runnable来执行，也可以被当做Future来获取Callable的返回结果
 public class FutureTask<V> implements RunnableFuture<V> {
     /*
      * Revision notes: This differs from previous versions of this
@@ -157,6 +161,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
      *
      * @throws NullPointerException if the callable is null
      */
+    // 构造方法的入参为Callable的实例对象，然后将FutureTask对象作为Thread构造方法的入参
     public FutureTask(Callable<V> callable) {
         if(callable == null) {
             throw new NullPointerException();
@@ -178,6 +183,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
      *
      * @throws NullPointerException if the runnable is null
      */
+    // 构造方法的入参为Runnable的实例对象，然后将FutureTask对象作为Thread构造方法的入参
     public FutureTask(Runnable runnable, V result) {
         this.callable = Executors.callable(runnable, result);
         this.state = NEW;       // ensure visibility of callable
@@ -192,6 +198,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
     // 执行任务，并设置执行结果。如果任务正常结束，则其最终状态为NORMAL
     public void run() {
         // 尝试设置当前线程为任务执行线程，如果设置失败，直接返回
+        // 任务已经被执行,直接退出
         if(!(state==NEW && RUNNER.compareAndSet(this, null, Thread.currentThread()))){
             return;
         }
@@ -212,7 +219,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
                     // 异常结束，设置异常信息，唤醒所有等待线程
                     setException(ex);
                 }
-                
+                // 任务执行成功,则记录返回结果
                 if(ran) {
                     // 正常结束，设置计算结果，唤醒所有等待线程
                     set(result);
@@ -414,7 +421,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
         }
         
         done();
-        
+        // 任务执行完了,将其置为null
         callable = null;        // to reduce footprint
     }
     

@@ -39,6 +39,7 @@ public enum RetentionPolicy {
     /**
      * Annotations are to be discarded by the compiler.
      */
+    // Annotation注解信息仅存在于编译器处理期间，编译器处理完成之后就没有该注解信息了
     SOURCE, // 注解在.java文件中可见
     
     /**
@@ -46,6 +47,7 @@ public enum RetentionPolicy {
      * but need not be retained by the VM at run time.  This is the default
      * behavior.
      */
+    // 编译器将Annotation注释存储于类对应的在.class文件中，默认行为
     CLASS,  // 注解在.java文件、.class文件中可见（局部变量的注解不会在二进制文件中保留）
     
     /**
@@ -54,5 +56,6 @@ public enum RetentionPolicy {
      *
      * @see java.lang.reflect.AnnotatedElement
      */
+    // 编译器将Annotation存储于类对应的.class文件中，并且可以由JVM读入（反射）
     RUNTIME // 注解在.java文件、.class文件、运行时均可见
 }

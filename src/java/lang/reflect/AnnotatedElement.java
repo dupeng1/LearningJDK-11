@@ -251,6 +251,13 @@ import java.util.stream.Collectors;
  * @since 1.5
  */
 // 表示可被注解的元素，例如类、方法、构造器、字段、参数、模块、包等
+// 1、代表一个在JVM内运行的一个被注解标注的元素，可以是Class，Method，Field，Constructor，Package等
+// 2、通俗来讲就好比你买了商品那你就是顾客，买商品就是被注解标注，顾客就好比这个类，
+// 通过这个接口的方法你就可以获取某个Method，Field，Constructor，Package等上面的注解信息
+// 3、该接口代表程序中可以接受注解的程序元素，并提供统一的Annotation访问方式，赋予API通过反射获取Annotation的能力，
+// 当一个Annotation类型被定义为运行时后，该注解才能是运行时可见，当class文件被装载时被保存在class文件中的Annotation才会被虚拟机读取
+// 4、AnnotatedElement接口是所有注解元素（Class、Method、Field、Package和Constructor）的父接口，
+// 所以程序通过反射获取了某个类的AnnotatedElement对象之后，程序就可以调用该对象的下列方法来访问Annotation信息：
 public interface AnnotatedElement {
     /**
      * Returns true if an annotation for the specified type
@@ -273,6 +280,7 @@ public interface AnnotatedElement {
      * @since 1.5
      */
     // 判断当前元素上是否存在注解
+    // 如果指定类型的注解出现在当前元素上，则返回true，否则返回false
     default boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
         return getAnnotation(annotationClass) != null;
     }
@@ -291,6 +299,7 @@ public interface AnnotatedElement {
      * @since 1.5
      */
     // 1-1 返回该元素上所有类型的注解（对于类来说，包括继承来的注解）
+    // 用于获取这个元素上的所有注解，并以数组返回，如果该元素上没有注解，那么将返回一个长度为0的数组。
     Annotation[] getAnnotations();
     
     /**
@@ -308,6 +317,7 @@ public interface AnnotatedElement {
      * @since 1.5
      */
     // 1-2 返回该元素上指定类型的注解（对于类来说，包括继承来的注解）
+    // 如果当前元素上存在参数所指定类型（annotationClass）的注解，则返回对应的注解，否则返回null
     <T extends Annotation> T getAnnotation(Class<T> annotationClass);
     
     /**
@@ -347,6 +357,7 @@ public interface AnnotatedElement {
      * @since 1.8
      */
     // 1-3 返回该元素上指定类型的注解（对于类来说，包括继承来的注解）[支持获取@Repeatable类型的注解]
+    // 获取与该元素相关联的注解，如果没有与此元素相关联的注解，则返回值是长度为0的数组
     default <T extends Annotation> T[] getAnnotationsByType(Class<T> annotationClass) {
         /*
          * Definition of associated: directly or indirectly present OR
@@ -410,6 +421,7 @@ public interface AnnotatedElement {
      * @since 1.8
      */
     // 2-2 返回该元素上指定类型的注解（对于类来说，不包括继承来的注解）
+    // 获取直接出现在这个元素上的注解，这种方法忽略了继承的注解。如果在此元素上没有直接存在的注解，则返回值是长度为0的数组
     default <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
         Objects.requireNonNull(annotationClass);
         // Loop over all directly-present annotations looking for a matching one

@@ -92,6 +92,13 @@ package java.util.concurrent;
  * 这类任务在执行中可被取消。
  * 当任务执行完成之后，可通过get()获取返回值，必要时阻塞直到准备就绪。
  */
+// 1、Future就是对于具体的Runnable或者Callable任务的执行结果进行取消、查询是否完成、获取结果。
+// 必要时可以通过get方法获取执行结果，该方法会阻塞直到任务返回结果
+// 2、Future存在许多限制
+//  a、并发执行多任务：Future只提供了get()方法来获取结果，并且是阻塞的。所以，除了等待你别无他法；
+//  b、无法对多个任务进行链式调用：如果你希望在计算任务完成后执行特定动作，比如发邮件，但Future却没有提供这样的能力；
+//  c、无法组合多个任务：如果你运行了10个任务，并期望在它们全部执行结束后执行特定动作，那么在Future中这是无能为力的；
+//  d、没有异常处理：Future接口中没有关于异常处理的方法；
 public interface Future<V> {
     
     /**
@@ -117,6 +124,7 @@ public interface Future<V> {
      * {@code true} otherwise
      */
     // 中止异步任务，包括取消或中断，参数【通常】表示是否可在任务执行期间中断线程
+    // 取消任务的执行，参数表示是否立即中断任务执行，或者等任务结束
     boolean cancel(boolean mayInterruptIfRunning);
     
     /**
@@ -126,6 +134,7 @@ public interface Future<V> {
      * @return {@code true} if this task was cancelled before it completed
      */
     // 判断当前任务是否中止
+    // 任务是否已经取消，任务完成前将其取消，则返回true
     boolean isCancelled();
     
     /**
@@ -138,6 +147,7 @@ public interface Future<V> {
      * @return {@code true} if this task completed
      */
     // 当前任务是否已完成
+    // 任务是否已经完成
     boolean isDone();
     
     /**
@@ -153,6 +163,7 @@ public interface Future<V> {
      *                               while waiting
      */
     // 获取任务计算结果，如果任务未完成，则陷入阻塞
+    // 等待任务执行结束，返回泛型结果，中断或任务执行异常都会抛出异常
     V get() throws InterruptedException, ExecutionException;
     
     /**
@@ -172,6 +183,7 @@ public interface Future<V> {
      * @throws TimeoutException      if the wait timed out
      */
     // 在规定时间内获取任务计算结果，超时后还没获取到的话，会抛出超时异常
+    // 同上面的get功能一样，多了设置超时时间。参数timeout指定超时时间，uint指定时间的单位，在枚举类TimeUnit中有相关的定义。如果计算超时，将抛出TimeoutException
     V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException;
     
 }

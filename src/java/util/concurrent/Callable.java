@@ -75,6 +75,8 @@ package java.util.concurrent;
  *     return new Result();
  * };
  */
+// Callable的call方法可以有返回值，可以声明抛出异常，和Callable配合的有一个Future类，通过Future可以了解任务执行情况，或者取消任务的执行，
+// 还可获取任务执行的结果，这些功能都是Runnable做不到的，Callable的功能要比Runnable强大
 @FunctionalInterface
 public interface Callable<V> {
     /**

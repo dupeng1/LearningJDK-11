@@ -74,6 +74,8 @@ package java.lang.annotation;
  * 表示注解应用范围的常量，使用方式：@Target(ElementType.XXX)
  * 除TYPE_PARAMETER和TYPE_USE属于类型注解，其他注解属于声明式注解
  */
+// 此枚举类型的常量提供了可能出现在java程序中注解的位置进行简单分类
+// 这些常量用于{@link Target java.lang.annotation.Target}元注解，以指定编写给定类型注释的合法位置
 public enum ElementType {
     /** Class, interface (including annotation type), or enum declaration */
     TYPE,   // 用于类、接口、注解、枚举类型的声明

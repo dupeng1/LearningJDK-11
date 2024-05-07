@@ -458,7 +458,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
     /**
      * Set containing all worker threads in pool. Accessed only when holding mainLock.
      */
-    // 线程池，存储【  核心Worker】与【非核心Worker】
+    // 线程池，存储【核心Worker】与【非核心Worker】
     private final HashSet<Worker> workerPool = new HashSet<>();
     
     /**

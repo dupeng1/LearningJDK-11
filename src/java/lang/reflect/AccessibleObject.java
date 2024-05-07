@@ -71,7 +71,9 @@ import sun.security.util.SecurityConstants;
  * @spec JPMS
  * @since 1.2
  */
-// 可访问的元素，例如：Constructor/Method/Field
+// 可访问的元素，例如：Constructor构造函数/Method方法/Field字段
+// 1、可访问对象，对其元素的可见性进行统一封装
+// 2、对可见性提供了强大的支持，使我们能够通过反射扩展访问限制，设置可以对private成员进行访问
 public class AccessibleObject implements AnnotatedElement {
     
     /**

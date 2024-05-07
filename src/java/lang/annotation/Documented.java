@@ -49,6 +49,8 @@ package java.lang.annotation;
  * @since 1.5
  */
 // 元注解，标记注解是否可以文档化，比如输出到JavaDoc文档中
+// 1、类和方法的Annotation在缺省的情况下是不出现在javadoc中的，使用@Documented修饰该注解则表示它可以出现在javadoc中。
+// 2、定义注解时，@Documented可有可无，若没有定义，则注解不会出现在javadoc中
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.ANNOTATION_TYPE)

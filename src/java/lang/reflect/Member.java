@@ -36,7 +36,8 @@ package java.lang.reflect;
  * @see Constructor
  * @since 1.1
  */
-// 成员元素，例如：Constructor/Method/Field
+// 成员元素，例如：Constructor构造函数/Method方法/Field字段/Class类型
+// 标记反射中的简单元素
 public interface Member {
     
     /**

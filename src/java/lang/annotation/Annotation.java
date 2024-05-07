@@ -42,6 +42,12 @@ package java.lang.annotation;
  * @since 1.5
  */
 // 所有注解类型的公共接口，在定义注解时由系统自动关联
+// 1、@interface意味着它实现了java.lang.annotation.Annotation接口，即定义了了Annotation，定义Annotation时，@interface是必须的
+// 2、它和我们通常的implement实现接口的方法不同，Annotation接口的实现细节都由编译器完成。通过@interface定义注解后，该注解不能继承其他的注解或接口
+// 3、注解作用：
+// a、标记，用于告诉编译器一些信息
+// b、编译时动态处理，如动态生成代码
+// c、运行时动态处理，如得到注解信息
 public interface Annotation {
     /**
      * Returns true if the specified object represents an annotation
@@ -115,6 +121,7 @@ public interface Annotation {
      *
      * @return the hash code of this annotation
      */
+    // 返回注解的哈希码值
     int hashCode();
     
     /**
@@ -127,6 +134,7 @@ public interface Annotation {
      *
      * @return a string representation of this annotation
      */
+    // 以字符串形式返回注解
     String toString();
     
     /**

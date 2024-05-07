@@ -106,8 +106,13 @@ package java.util.concurrent;
  * 当给定的任务结束后，不管是正常结束，还是异常结束，或者是被取消，都会被存入一个阻塞队列中
  * 后续可以从阻塞队列中取出这些已结束的任务，并获取它们的返回值或任务状态
  */
+// 1、Executor和BlockingQueue功能的融合体，Executor完成计算任务，BlockingQueue负责保存异步任务的执行结果
+// 2、CompletionService可以为任务的执行设置时限，主要是通过BlockingQueue的poll(long time，TimeUnit unit)为任务执行结果的取得限制时间，
+// 如果没有完成就取消任务
+// 3、CompletionService能够让异步任务的执行结果有序化，先执行完先进入阻塞队列，利用这个特性可以轻松实现后续处理有序性，避免无谓的等待
 public class ExecutorCompletionService<V> implements CompletionService<V> {
     // 【任务执行器】
+    // 执行任务的线程池
     private final Executor executor;
     
     /**
@@ -119,6 +124,7 @@ public class ExecutorCompletionService<V> implements CompletionService<V> {
     private final AbstractExecutorService aes;
     
     // 阻塞队列，存储已结束的任务（不管是正常结束，还是异常结束，或者是被取消）
+    // 任务完成会记录在该队列中
     private final BlockingQueue<Future<V>> completionQueue;
     
     
@@ -134,12 +140,14 @@ public class ExecutorCompletionService<V> implements CompletionService<V> {
      *
      * @throws NullPointerException if executor is {@code null}
      */
+    // ExecutorCompletionService提供了两个构造方法，其中线程池是一定要有的参数，任务完成的记录队列默认使用的是LinkedBlockingQueue
     public ExecutorCompletionService(Executor executor) {
         if(executor == null) {
             throw new NullPointerException();
         }
         this.executor = executor;
         this.aes = (executor instanceof AbstractExecutorService) ? (AbstractExecutorService) executor : null;
+        // 默认LinkedBlockingQueue
         this.completionQueue = new LinkedBlockingQueue<Future<V>>();
     }
     
@@ -201,6 +209,7 @@ public class ExecutorCompletionService<V> implements CompletionService<V> {
      * @throws NullPointerException       {@inheritDoc}
      */
     // 提交/执行任务，在任务结束后，将任务存入阻塞队列
+    // 内部会将其转换为RunnableFutuer实例，然后再封装成QueueingFuture实例作为任务来执行
     public Future<V> submit(Callable<V> task) {
         if(task == null) {
             throw new NullPointerException();

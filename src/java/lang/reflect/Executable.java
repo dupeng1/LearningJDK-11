@@ -43,7 +43,8 @@ import java.util.StringJoiner;
  *
  * @since 1.8
  */
-// 可执行元素，比如：Constructor和Method
+// 可执行元素，比如：Constructor构造函数和Method方法
+// 表示可执行元素的一种封装，可以获取方法签名相关信息
 public abstract class Executable extends AccessibleObject implements Member, GenericDeclaration {
     
     private transient volatile boolean hasRealParameterData;

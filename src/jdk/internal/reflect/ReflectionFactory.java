@@ -256,6 +256,7 @@ public class ReflectionFactory {
          * we have to break the cycle here.
          */
         // 如果declaringClass类是否与ConstructorAccessorImpl类相同，或为ConstructorAccessorImpl类的子类，则需要防止构造器产生无限递归调用
+        // 当需要创建的Class实例和ConstructorAccessorImpl是父子关系，就要返回BootstrapConstructorAccessorImpl，调用的是底层的方法，通过C++编写
         if(Reflection.isSubclassOf(declaringClass, ConstructorAccessorImpl.class)) {
             return new BootstrapConstructorAccessorImpl(constructor);
         }
@@ -272,6 +273,9 @@ public class ReflectionFactory {
             // 如果开启"Inflation"技术
         } else {
             // 构造基于JNI的构造器调用器，先尝试用基于JNI的方式进行反射操作
+
+            // 调用本地方法创建ConstructorAccessor，需要根据调用次数和inflationThreshold做比较，
+            // inflationThreshold的默认值是15，可以通过-Dsun.reflect.inflationThreshold=来修改默认值
             NativeConstructorAccessorImpl acc = new NativeConstructorAccessorImpl(constructor);
             DelegatingConstructorAccessorImpl res = new DelegatingConstructorAccessorImpl(acc);
             acc.setParent(res);

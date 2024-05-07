@@ -48,6 +48,7 @@ package java.lang.reflect;
  *   |           |               |             |                 |           |              |        |
  * AnnotatedTypeVariableImpl   AnnotatedParameterizedTypeImpl  AnnotatedWildcardTypeImpl  AnnotatedArrayTypeImpl
  */
+// 被注解的类型，表示带有注解的类型，用于表示具有注解的类型
 public interface AnnotatedType extends AnnotatedElement {
     
     /**

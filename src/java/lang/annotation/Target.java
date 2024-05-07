@@ -79,6 +79,9 @@ package java.lang.annotation;
  * 默认的应用范围是TYPE_PARAMETER之外的范围
  * 但是，如果使用了默认范围，则当应用范围发生重叠时，程序可能无法获取到正确的注解。
  */
+// 1、ElementType是Annotation(注解)的目标类型属性，而@Target的作用，就是来指定Annotation（注解）目标类型属性
+// 2、@Target(ElementType.TYPE)指定该Annotation(注解)的目标类型是ElementType.TYPE，是用来修饰类、接口或枚举声明的注解
+// 3、定义Annotation(注解)时，@Target可有可无，若没有@Target，则该Annotation（注解）可以用于任何地方
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.ANNOTATION_TYPE)
