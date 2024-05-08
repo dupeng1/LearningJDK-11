@@ -84,6 +84,10 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * 但由于优先队列必须通过比较器来确定元素的"优先级"，
  * 因而DelayQueue中的元素必须自己实现内部比较器接口。
  */
+// 1、没有大小限制的队列，因此往队列中插入数据的操作（生产者）永远不会被阻塞，而只有获取数据的操作（消费者）才会被阻塞。
+// 2、DelayQueue对元素进行持有直到一个特定的延迟到期，注入其中的元素必须实现 java.util.concurrent.Delayed 接口
+// 3、DelayQueue将会在每个元素的getDelay()方法返回的值的时间段之后才释放掉该元素。
+// 如果返回的是0或者负值，延迟将被认为过期，该元素将会在 DelayQueue 的下一次take被调用的时候被释放掉。
 public class DelayQueue<E extends Delayed> extends AbstractQueue<E> implements BlockingQueue<E> {
     
     // 不支持外部比较器的优先队列

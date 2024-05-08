@@ -184,6 +184,14 @@ import java.util.Queue;
  * 1.阻塞队列是线程安全的，入队/出队互不干扰
  * 2.在不满足入队/出队条件时，可以选择阻塞操作线程，或选择快速失败
  */
+// 1、很好解决了多线程中，如何高效安全传输数据的问题
+// 2、多线程环境中，通过队列可以很容易实现数据共享，比如经典的“生产者”和“消费者”模型中，通过队列可以很便利地实现两者之间的数据共享。
+// 3、假设我们有若干生产者线程，另外又有若干个消费者线程。如果生产者线程需要把准备好的数据共享给消费者线程，利用队列的方式来传递数据，
+// 就可以很方便地解决他们之间的数据共享问题。但如果生产者和消费者在某个时间段内，万一发生数据处理速度不匹配的情况呢？理想情况下，
+// 如果生产者产出数据的速度大于消费者消费的速度，并且当生产出来的数据累积到一定程度的时候，那么生产者必须暂停等待一下（阻塞生产者线程），
+// 以便等待消费者线程把累积的数据处理完毕，反之亦然。然而，在concurrent包发布以前，在多线程环境下，我们每个程序员都必须去自己控制这些细节，
+// 尤其还要兼顾效率和线程安全，而这会给我们的程序带来不小的复杂度。好在此时，强大的concurrent包横空出世了，而它也给我们带来了强大的BlockingQueue。（
+// 在多线程领域：所谓阻塞，在某些情况下会挂起线程（即阻塞），一旦条件满足，被挂起的线程又会自动被唤醒），
 public interface BlockingQueue<E> extends Queue<E> {
     
     /*▼ 入队 ████████████████████████████████████████████████████████████████████████████████┓ */
@@ -202,6 +210,7 @@ public interface BlockingQueue<E> extends Queue<E> {
      *                                  element prevents it from being added to this queue
      */
     // 入队，无法入队时扩容或阻塞
+    // 1、把e加到BlockingQueue里，如果BlockQueue没有空间，则调用此方法的线程被阻塞，直到BlockingQueue里面有空间再继续
     void put(E e) throws InterruptedException;
     
     
@@ -226,6 +235,8 @@ public interface BlockingQueue<E> extends Queue<E> {
      *                                  element prevents it from being added to this queue
      */
     // 入队，无法入队时扩容或抛异常，不阻塞
+    // 1、如果可以在不违反容量限制的情况下立即将指定元素插入此队列，则在成功时返回true，
+    // 2、如果当前没有可用空间则IllegalStateException。当使用容量受限的队列时，通常最好使用offer
     boolean add(E e);
     
     
@@ -249,6 +260,7 @@ public interface BlockingQueue<E> extends Queue<E> {
      *                                  element prevents it from being added to this queue
      */
     // 入队，无法入队时扩容或返回false，不阻塞
+    // 1、如果可能的话，将e加到BlockingQueue里，即如果BlockingQueue可以容纳，则返回true，否则返回false
     boolean offer(E e);
     
     /**
@@ -272,6 +284,7 @@ public interface BlockingQueue<E> extends Queue<E> {
      *                                  element prevents it from being added to this queue
      */
     // 入队，无法入队时扩容，或阻塞一段时间，超时后无法入队则返回false
+    // 1、可以设定等待的时间，如果在指定的时间内，还不能往队列中加入e，则返回失败
     boolean offer(E e, long timeout, TimeUnit unit) throws InterruptedException;
     
     /*▲ 入队 ████████████████████████████████████████████████████████████████████████████████┛ */
@@ -289,6 +302,7 @@ public interface BlockingQueue<E> extends Queue<E> {
      * @throws InterruptedException if interrupted while waiting
      */
     // 出队，无法出队时阻塞
+    // 1、取走BlockingQueue里排在首位的对象，若BlockingQueue为空，阻塞进入等待状态直到BlockingQueue有新的数据被加入
     E take() throws InterruptedException;
     
     
@@ -311,6 +325,7 @@ public interface BlockingQueue<E> extends Queue<E> {
      *                              (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
      */
     // 移除，移除成功则返回true（该方法来自Collection）
+    // 1、从此队列中移除指定元素的单个实例（如果存在），则返回true
     boolean remove(Object o);
     
     
@@ -329,6 +344,8 @@ public interface BlockingQueue<E> extends Queue<E> {
      * @throws InterruptedException if interrupted while waiting
      */
     // 出队，无法出队时阻塞一段时间，超时后无法出队则返回null
+    // 1、从BlockingQueue取出一个队首的对象，如果在指定时间内，队列一旦有数据可取，则立即返回队列中的数据。
+    // 2、否则时间超时还没有数据可取，返回失败。
     E poll(long timeout, TimeUnit unit) throws InterruptedException;
     
     
@@ -358,6 +375,7 @@ public interface BlockingQueue<E> extends Queue<E> {
      *                                       it from being added to the specified collection
      */
     // 将队列中所有元素移除，并转移到给定的容器当中
+    // 1、一次性从BlockingQueue获取所有可用的数据对象，通过该方法，可以提升获取数据效率；不需要多次分批加锁或释放锁
     int drainTo(Collection<? super E> c);
     
     /**
@@ -386,6 +404,7 @@ public interface BlockingQueue<E> extends Queue<E> {
      *                                       it from being added to the specified collection
      */
     // 将队列中前maxElements个元素移除，并转移到给定的容器当中
+    // 1、一次性从BlockingQueue获取所有可用的数据对象（还可以指定获取数据的个数），通过该方法，可以提升获取数据效率；不需要多次分批加锁或释放锁
     int drainTo(Collection<? super E> c, int maxElements);
     
     /*▲ 出队 ████████████████████████████████████████████████████████████████████████████████┛ */

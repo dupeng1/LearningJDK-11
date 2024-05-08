@@ -121,6 +121,10 @@ import jdk.internal.misc.SharedSecrets;
  *
  * 具体说明参见PriorityQueue
  */
+// 1、基于优先级的阻塞队列
+// 2、PriorityBlockingQueue并不会阻塞数据生产者，而只会在没有可消费的数据时，阻塞数据的消费者
+// 因此使用的时候要特别注意，生产者生产数据的速度绝对不能快于消费者消费数据的速度，否则时间一长，会最终耗尽所有的可用堆内存空间。
+// 3、实现PriorityBlockingQueue时，内部控制线程同步的锁采用的是公平锁
 @SuppressWarnings("unchecked")
 public class PriorityBlockingQueue<E> extends AbstractQueue<E> implements BlockingQueue<E>, Serializable {
     
@@ -350,7 +354,7 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E> implements Blocki
         int n, cap;
         Object[] es;
         
-        // 扩容
+        // 扩容，队列长度大于等于队列的容量
         while((n = size) >= (cap = (es = queue).length)) {
             tryGrow(es, cap);
         }
@@ -360,8 +364,10 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E> implements Blocki
             
             final Comparator<? super E> cmp;
             if((cmp = comparator) == null) {
+                // n为队列长度，e为队列元素，es为队列
                 siftUpComparable(n, e, es);
             } else {
+                // n为队列长度，e为队列元素，es为队列，cmp为比较器
                 siftUpUsingComparator(n, e, es, cmp);
             }
             

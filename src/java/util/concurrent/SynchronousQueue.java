@@ -100,6 +100,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * 使用SynchronousQueue的时候，如果一个线程的put()操作找不到互补的take()操作时，它将陷入阻塞，
  * 这一点上与LinkedTransferQueue不同。
  */
+// 无缓冲的等待队列，类似中介的直接交易
 public class SynchronousQueue<E> extends AbstractQueue<E> implements BlockingQueue<E>, Serializable {
     
     /*

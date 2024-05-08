@@ -135,5 +135,6 @@ public interface Executor {
      * @throws NullPointerException       if command is null
      */
     // 执行Runnable类型的任务
+    // 没有办法获知任务执行结果
     void execute(Runnable command);
 }

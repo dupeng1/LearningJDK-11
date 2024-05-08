@@ -90,6 +90,9 @@ import java.util.function.Predicate;
  *
  * 注：该循环队列是通过count域的值来识别队空还是队满的
  */
+// 并发阻塞是通过ReentrantLock和Condition来实现的，ArrayBlockingQueue内部只有一把锁，意味着同一时刻只有一个线程能进行入队或者出队的操作。
+// enqueue：元素入队，putIndex + 1，队尾加1
+// dequeue：元素出队，takeIndex + 1，队头加1
 public class ArrayBlockingQueue<E> extends AbstractQueue<E> implements BlockingQueue<E>, Serializable {
     
     /*
@@ -204,6 +207,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E> implements BlockingQ
      *
      * @throws IllegalArgumentException if {@code capacity < 1}
      */
+    // fair表示插入或者删除的线程是否按照先入先出顺序，锁是否是公平锁
     public ArrayBlockingQueue(int capacity, boolean fair) {
         if(capacity<=0) {
             throw new IllegalArgumentException();
@@ -293,6 +297,9 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E> implements BlockingQ
      * @throws NullPointerException {@inheritDoc}
      */
     // 入队，线程安全，队满时线程被阻塞
+    // 1、ArrayBlockingQueue不允许元素为null
+    // 2、ArrayBlockingQueue在队列已满时将会调用notFull的await()方法释放锁并处于阻塞状态
+    // 3、一旦ArrayBlockingQueue不为满的状态，就将元素入队
     public void put(E e) throws InterruptedException {
         Objects.requireNonNull(e);
         final ReentrantLock lock = this.lock;
@@ -934,6 +941,10 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E> implements BlockingQ
      * Call only when holding lock.
      */
     // 入队，非线程安全，仅内部使用
+    // 1、队尾元素置为e
+    // 2、队尾索引加1，如果队尾索引到达数组长度则置为0
+    // 3、队列元素个数加1
+    // 4、notEmpty.signal
     private void enqueue(E e) {
         // assert lock.isHeldByCurrentThread();
         // assert lock.getHoldCount() == 1;
@@ -961,6 +972,11 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E> implements BlockingQ
      * Call only when holding lock.
      */
     // 出队，非线程安全，仅内部使用
+    // 1、获取队头元素
+    // 2、队头元素置为null
+    // 3、队头索引加1，如果队头索引到达数组长度则置为0
+    // 4、队列元素个数减1
+    // 5、notFull.signal
     private E dequeue() {
         // assert lock.isHeldByCurrentThread();
         // assert lock.getHoldCount() == 1;
@@ -995,6 +1011,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E> implements BlockingQ
     }
     
     /** Implementation of bulk remove methods. */
+    // 批量删除
     private boolean bulkRemove(Predicate<? super E> filter) {
         final ReentrantLock lock = this.lock;
         lock.lock();
@@ -1003,6 +1020,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E> implements BlockingQ
                 if(count>0) {
                     final Object[] items = this.items;
                     // Optimize for initial run of survivors
+                    // i为遍历开始索引；end为遍历结束索引；to为临时遍历结束索引
                     for(int i = takeIndex, end = putIndex, to = (i<end) ? end : items.length; ; i = 0, to = end) {
                         for(; i<to; i++) {
                             // 如果该元素满足过滤条件
@@ -1086,6 +1104,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E> implements BlockingQ
     private static void circularClear(Object[] items, int i, int end) {
         // assert 0 <= i && i < items.length;
         // assert 0 <= end && end < items.length;
+        // i为开始索引，end为结束索引，to为临时结束索引
         for(int to = (i<end) ? end : items.length; ; i = 0, to = end) {
             for(; i<to; i++) {
                 items[i] = null;

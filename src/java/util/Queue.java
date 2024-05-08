@@ -161,6 +161,7 @@ public interface Queue<E> extends Collection<E> {
      *                                  prevents it from being added to this queue
      */
     // 入队，无法入队时扩容或返回false，不阻塞
+    // 1、添加一个元素并返回true 如果队列已满，则返回false
     boolean offer(E e);
     
     /**
@@ -183,6 +184,7 @@ public interface Queue<E> extends Collection<E> {
      *                                  prevents it from being added to this queue
      */
     // 入队，无法入队时扩容或抛异常，不阻塞
+    // 1、添加一个元素，如果队列已满，则抛出一个IIIegaISlabEepeplian异常
     boolean add(E e);
     
     /*▲ 入队 ████████████████████████████████████████████████████████████████████████████████┛ */
@@ -198,6 +200,7 @@ public interface Queue<E> extends Collection<E> {
      * @return the head of this queue, or {@code null} if this queue is empty
      */
     // 出队，无法出队时返回null，不阻塞
+    // 1、移除并返问队列头部的元素 如果队列为空，则返回null
     E poll();
     
     /**
@@ -210,6 +213,7 @@ public interface Queue<E> extends Collection<E> {
      * @throws NoSuchElementException if this queue is empty
      */
     // 出队，无法出队时抛异常，不阻塞
+    // 1、移除并返回队列头部的元素 如果队列为空，则抛出NoSuchElementException异常
     E remove();
     
     /*▲ 出队 ████████████████████████████████████████████████████████████████████████████████┛ */
@@ -227,6 +231,7 @@ public interface Queue<E> extends Collection<E> {
      * @throws NoSuchElementException if this queue is empty
      */
     // 查看队头元素，如果队列为空，抛出异常
+    // 1、返回队列头部的元素 如果队列为空，则抛出一个NoSuchElementException异常
     E element();
     
     /**
@@ -236,6 +241,7 @@ public interface Queue<E> extends Collection<E> {
      * @return the head of this queue, or {@code null} if this queue is empty
      */
     // 查看队头元素，如果队列为空，返回null
+    // 1、返回队列头部的元素 如果队列为空，则返回null
     E peek();
     
     /*▲ 取值 ████████████████████████████████████████████████████████████████████████████████┛ */

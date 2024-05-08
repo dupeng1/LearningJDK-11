@@ -142,6 +142,7 @@ import java.util.List;
  * 客户端向【任务执行框架】提交任务后，由【任务执行框架】调度、执行任务，
  * 当任务结束后，可以选择让【任务执行框架】暂停/阻塞或停止。
  */
+// 线程池定义的一个接口
 public interface ExecutorService extends Executor {
     /**
      * Initiates an orderly shutdown in which previously submitted
@@ -161,6 +162,11 @@ public interface ExecutorService extends Executor {
      *                           denies access.
      */
     // 有序关闭【任务执行框架】，正在执行的任务不受影响
+    // 1、如果应用程序是通过main方法启动的，在这个main退出后，如果应用程序中的ExecutorService没有关闭，这个应用将一直运行
+    // 之所以会出现这种情况，是因为ExecutorService中运行的线程会组织JVM关闭
+    // 2、如果要关闭ExecutorService中执行的线程，可以调用ExecutorService.shutdown()方法，
+    // 在调用shutdown()方法之后，ExecutorService不会立即关闭，但是它不再接收新的任务，
+    // 直到当前所有线程执行完成才会关闭，所有在shutdown()执行之前提交的任务都会被执行。
     void shutdown();
     
     /**
@@ -188,6 +194,8 @@ public interface ExecutorService extends Executor {
      *                           denies access.
      */
     // 强制关闭【任务执行框架】，包括关闭正在执行的任务。返回还未执行的任务列表
+    // 1、如果我们想立即关闭ExecutorService，我们可以调用ExecutorService.shutdownNow()方法，
+    // 这个动作将跳过所有正在执行的任务和被提交还没有执行的任务。但是它并不对正在执行的任务做任何保证，有可能它们都会停止，也有可能执行完成。
     List<Runnable> shutdownNow();
     
     /**
@@ -250,6 +258,10 @@ public interface ExecutorService extends Executor {
      * @throws NullPointerException       if the task is null
      */
     // 包装/提交/执行Callable型的任务
+    // 和Submit(Runnable)类似，返回一个Future对象
+    // Callable接口中的call()方法有一个返回值，可以返回任务的执行结果
+    // Runnable接口中的run()方法是void的，没有返回值
+    // future.get()方法会返回一个Callable任务执行结果，future.get()方法会产生阻塞
     <T> Future<T> submit(Callable<T> task);
     
     /**
@@ -266,6 +278,8 @@ public interface ExecutorService extends Executor {
      * @throws NullPointerException       if the task is null
      */
     // 包装/提交/执行Runnable型的任务
+    // 可以获知任务执行结果，返回Future对象，通过该对象可以检查提交的任务是否执行完毕
+    // future.get()方法会返回一个null，future.get()方法会产生阻塞
     Future<?> submit(Runnable task);
     
     /**
@@ -310,6 +324,7 @@ public interface ExecutorService extends Executor {
      *                                    scheduled for execution
      */
     // 执行指定容器中的所有任务，返回值是所有包装后的任务列表
+    // 1、接收Callable的集合，执行这个方法会返回一个Future的List，其中对应着每个Callable任务执行后的Future对象
     <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException;
     
     /**
@@ -367,6 +382,9 @@ public interface ExecutorService extends Executor {
      *                                    for execution
      */
     // 从任一任务开始执行，只要发现某个任务已结束，就中断其他正在执行的任务，并返回首个被发现结束的任务的计算结果
+    // 1、接收Callable的集合，执行这个方法不会返回Future，但是会返回所有Callable任务中其中一个任务的执行结果，
+    // 这个方法也无法保证返回的是哪个任务的执行结果，反正是其中的某一个
+    // 2、每次执行都会返回一个结果，并且返回的结果是变化的，可能返回Task2也可能是Task1或者其他
     <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException;
     
     /**
