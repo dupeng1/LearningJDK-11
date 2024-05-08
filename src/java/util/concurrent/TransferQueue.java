@@ -67,6 +67,7 @@ package java.util.concurrent;
  * @since 1.7
  */
 // 数据传递接口
+// 如果有消费者正在获取元素，则将队列中的元素传递给消费者。如果没有消费者，则等待消费者消费
 public interface TransferQueue<E> extends BlockingQueue<E> {
     
     /**
@@ -88,6 +89,10 @@ public interface TransferQueue<E> extends BlockingQueue<E> {
      *                                  element prevents it from being added to this queue
      */
     // 生产者传递元素给消费者，没有消费者时阻塞，直到消费者到达时解除阻塞
+    // 1、圆通快递员要将小明的2个快递送货到门，韵达快递员也想将小明的2个快递送货到门。小明一次只能拿一个，快递员必须等小明拿了一个后，才能继续给第二个
+    // 2、如果当前有消费者正在等待接收元素（消费者通过take方法或超时限制的poll方法时），
+    // transfer方法可以把生产者传入的元素立刻transfer（传输）给消费者。
+    // 3、如果没有消费者等待接收元素，transfer方法会将元素放在队列的tail（尾）节点，并等到该元素被消费者消费了才返回。
     void transfer(E e) throws InterruptedException;
     
     /**
@@ -110,6 +115,10 @@ public interface TransferQueue<E> extends BlockingQueue<E> {
      *                                  element prevents it from being added to this queue
      */
     // 生产者尝试传递元素给消费者，没有消费者时返回false
+    // 1、圆通快递员要将小明的2个快递送货到门，韵达快递员也想将小明的2个快递送货到门。发现小明不在家，就把快递直接放到菜鸟驿站了
+    // 2、试探生产者传入的元素是否能直接传给消费者
+    // 3、如果没有消费者等待接收元素，则返回false
+    // 4、和transfer方法的区别是，无论消费者是否接收，方法立即返回。
     boolean tryTransfer(E e);
     
     /**
@@ -142,6 +151,13 @@ public interface TransferQueue<E> extends BlockingQueue<E> {
      *                                  element prevents it from being added to this queue
      */
     // 尝试传递元素，没有消费者时则阻塞一段时间，超时后无法传递则返回false
+    // 1、圆通快递员要将小明的2个快递送货到门，韵达快递员也想将小明的2个快递送货到门。发现小明不在家，
+    // 于是先等了5分钟，发现小明还没有回来，就把快递直接放到菜鸟驿站了
+    // 2、带有时间限制的tryTransfer方法
+    // 3、带有时间限制的tryTransfer方法
+    // 4、如果没有消费者消费该元素则等待指定的时间再返回
+    // 5、如果超时了还没有消费元素，则返回 false
+    // 6、如果在超时时间内消费了元素，则返回 true
     boolean tryTransfer(E e, long timeout, TimeUnit unit) throws InterruptedException;
     
     /**

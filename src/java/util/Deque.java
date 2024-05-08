@@ -203,6 +203,12 @@ package java.util;
  * @since 1.6
  */
 // 双向容器，容器的两端均支持插入/删除操作
+// 1、继承Queue的offer队尾增加元素，双向队列增加了队首增加元素offerFirst、队尾增加元素offerLast
+// 2、继承Queue的add队尾增加元素，双向队列增加了队首增加元素addFirst、队尾增加元素addLast
+// 3、继承Queue的poll队首移除元素，双向队列增加了队首移除元素pollFirst、队尾移除元素pollLast
+// 4、继承Queue的remove队首移除元素，双向队列增加了队首移除元素removeFirst、队尾移除元素removeLast
+// 5、继承Queue的peek队首移除元素，双向队列增加了队首移除元素peekFirst、队尾移除元素peekLast
+// 6、增加了push、pop栈的方法
 public interface Deque<E> extends Queue<E> {
     
     /*▼ 入队 ████████████████████████████████████████████████████████████████████████████████┓ */
