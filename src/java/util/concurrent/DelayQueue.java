@@ -88,6 +88,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 // 2、DelayQueue对元素进行持有直到一个特定的延迟到期，注入其中的元素必须实现 java.util.concurrent.Delayed 接口
 // 3、DelayQueue将会在每个元素的getDelay()方法返回的值的时间段之后才释放掉该元素。
 // 如果返回的是0或者负值，延迟将被认为过期，该元素将会在 DelayQueue 的下一次take被调用的时候被释放掉。
+// 4、用于放置实现了Delayed接口的对象，其中的对象只能在其到期时才能从队列中取走，这种队列是有序的，即队头对象的延迟到期时间最长
 public class DelayQueue<E extends Delayed> extends AbstractQueue<E> implements BlockingQueue<E> {
     
     // 不支持外部比较器的优先队列
