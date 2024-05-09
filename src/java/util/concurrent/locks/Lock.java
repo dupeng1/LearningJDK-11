@@ -235,6 +235,8 @@ public interface Lock {
      *                              of lock acquisition is supported)
      */
     // 申请锁，不允许阻塞带有中断标记的线程（不一定成功）
+
+    // 可中断地获取锁，和lock不同之处在于该方法会响应中断，即在锁的获取中可以中断当前线程
     void lockInterruptibly() throws InterruptedException;
     
     /**
@@ -266,7 +268,7 @@ public interface Lock {
      */
     // 申请锁，只申请一次，失败后不再尝试
 
-    // 如果锁可用立即返回true，如果锁不可用立即返回false，在拿不到锁的时候不会一直在那等待；
+    // 尝试非阻塞的获取锁，调用该方法后立即返回，如果能获取则返回true，否则返回false；
     boolean tryLock();
     
     /**
@@ -333,10 +335,10 @@ public interface Lock {
     // 和tryLock方法类似，只不过区别在于这个方法在拿不到锁时会等待一定时间，在时间期限之内如果还拿不到锁，就返回false，
     // 如果一开始拿到锁或者在等待期间内拿到了锁，则返回true
 
-    // 如果锁可用，则此方法立即返回true。 如果该锁不可用，则当前线程将出于线程调度目的而被禁用并处于休眠状态，直到发生以下三种情况之一为止：
-    // ①当前线程获取到该锁；
-    // ②当前线程被其他线程中断，并且支持中断获取锁；
-    // ③经过指定的等待时间如果获得了锁，则返回true，没获取到锁返回false。
+    // 超时的获取锁，当前线程在一下3中情况下会返回：
+    // ①当前线程在超时时间内获得了锁；
+    // ②当前线程在超时时间内被中断；
+    // ③超时时间结束，返回false。
     boolean tryLock(long time, TimeUnit unit) throws InterruptedException;
     
     /**
@@ -377,5 +379,7 @@ public interface Lock {
      *                                       implementation does not support conditions
      */
     // 获取条件对象实例
+
+    // 获取等待通知组件，该组件和当前线程得锁绑定，当前线程只有获得了锁，才能调用该组件的wait()方法，而调用后当前线程将释放锁
     Condition newCondition();
 }
