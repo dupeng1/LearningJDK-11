@@ -137,6 +137,8 @@ package java.util;
  * @since 1.5
  */
 // 队列的抽象接口，提供了入队/出队/查看队头元素的方法
+// 1、add、remove、element会抛出异常
+// 2、offer、poll、peek不会抛出异常
 public interface Queue<E> extends Collection<E> {
     
     /*▼ 入队 ████████████████████████████████████████████████████████████████████████████████┓ */

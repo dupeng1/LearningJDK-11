@@ -63,6 +63,7 @@ package java.util;
  * @since 1.5
  */
 // 队列容器的一个抽象实现
+// add、remove、element调用offer、poll、peek
 public abstract class AbstractQueue<E> extends AbstractCollection<E> implements Queue<E> {
     
     /**
