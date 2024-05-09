@@ -116,6 +116,7 @@ import jdk.internal.vm.annotation.ReservedStackAccess;
  * 申请锁的过程，可以看做是生产许可证，线程拿到了这个许可证，就相当于拿到了锁的控制权
  * 释放锁的过程，可以看做是消费许可证，线程丢弃了这个许可证，就相当于丧失了锁的控制权
  */
+// 重入锁也叫做递归锁，指的是同一线程，外层函数获得锁之后，内层递归函数仍然有获取该锁的代码，但不受影响。避免死锁问题的，synchronized也可重入。
 public class ReentrantLock implements Lock, Serializable {
     
     private static final long serialVersionUID = 7373984872572414699L;
@@ -168,6 +169,7 @@ public class ReentrantLock implements Lock, Serializable {
      * at which time the lock hold count is set to one.
      */
     // 申请独占锁，允许阻塞带有中断标记的线程（不一定成功）
+    // 获得锁
     public void lock() {
         // 生产一张许可证
         sync.acquire(1);
@@ -220,6 +222,7 @@ public class ReentrantLock implements Lock, Serializable {
      * @throws InterruptedException if the current thread is interrupted
      */
     // 申请独占锁，不允许阻塞带有中断标记的线程（不一定成功）
+    // 获得锁，但优先响应中断
     public void lockInterruptibly() throws InterruptedException {
         // 生产一张许可证
         sync.acquireInterruptibly(1);
@@ -300,6 +303,7 @@ public class ReentrantLock implements Lock, Serializable {
      * @throws NullPointerException if the time unit is null
      */
     // 申请独占锁，不允许阻塞带有中断标记的线程（一次失败后，带着超时标记继续申请）
+    // 在给定时间内尝试获得锁
     public boolean tryLock(long timeout, TimeUnit unit) throws InterruptedException {
         // 生产一张许可证
         return sync.tryAcquireNanos(1, unit.toNanos(timeout));
@@ -332,6 +336,7 @@ public class ReentrantLock implements Lock, Serializable {
      * thread; and {@code false} otherwise
      */
     // 申请独占-非公平锁，只申请一次，失败后不再尝试
+    // 尝试获得锁，成功返回true，否则返回false，该方法不等待，立即返回
     public boolean tryLock() {
         // 生产一张许可证
         return sync.nonfairTryAcquire(1);
@@ -349,6 +354,7 @@ public class ReentrantLock implements Lock, Serializable {
      *                                      hold this lock
      */
     // 释放独占锁，如果锁已被完全释放，则唤醒后续的阻塞线程
+    // 释放锁
     public void unlock() {
         // 消费一张许可证
         sync.release(1);
@@ -761,6 +767,7 @@ public class ReentrantLock implements Lock, Serializable {
         }
         
         // 申请一次公平锁，返回值代表锁是否申请成功
+        // 公平锁tryAcquire()方法的实现
         final boolean fairTryAcquire(int acquires) {
             // 获取申请锁的线程
             final Thread current = Thread.currentThread();
@@ -769,12 +776,21 @@ public class ReentrantLock implements Lock, Serializable {
             int c = getState();
             
             // 如果锁没有被任何线程占用
+            // state为0，表面此刻没有线程占用锁，但这并不意味着当前线程就能马上获取锁
             if(c == 0) {
                 /* 发现锁空闲时，需要检查有没有其他线程在排队，如果没有其他人在队首，才尝试抢锁，这也是"公平"所在 */
                 
                 // 判断【|同步队列|】的队头是否还有其他（非当前线程）的线程在排队
+
+                // 考虑这样一种情况：上一个持有该锁的线程刚刚释放完锁并将state从1置为0，他的后继节点（a线程）还没来得及获取锁，
+                // 这时当前线程（b线程）调用了tryAcquire()方法尝试获取锁，这时b线程会发现state为0，但这并不代表b线程就有资格获取锁，
+                // 因为a线程都已经排到队列的最前面了，此时有资格获取锁的线程应该是a线程，你b线程才刚刚进来，肯定是不能插队的，
+                // 否则就不符合公平锁的原则了。
                 if(!hasQueuedPredecessors()) {
                     // 尝试更新许可证数量为acquires，返回true代表更新成功，即成功抢到了锁
+
+                    // 即使hasQueuedPredecessors()方法返回false，当前线程还需要用CAS操作成功将state从0置为1，
+                    // 因为在多线程的情况下，有可能有其他的线程同样走到了这一步，那么谁的CAS操作成功了，谁才能获得锁。
                     if(compareAndSetState(0, acquires)){
                         // 设置当前线程为<占有者线程>
                         setExclusiveOwnerThread(current);
@@ -793,6 +809,8 @@ public class ReentrantLock implements Lock, Serializable {
                 
                 // 更新许可证数量
                 int nextc = c + acquires;
+                // 如果一个线程一直在重入且没有释放锁，直到将state设置为了MAX_INT，
+                // 那么下次重入的时候state会被置为MAX_INT+1（这是一个负数），这肯定是不允许的，因此会抛出一个Error
                 if(nextc<0) {
                     // 溢出
                     throw new Error("Maximum lock count exceeded");
@@ -806,6 +824,9 @@ public class ReentrantLock implements Lock, Serializable {
         }
         
         // 释放一次锁，返回值表示同步锁是否处于自由状态（无线程持有）
+
+        // 获取当前锁的状态量，然后计算出释放之后的锁的状态量为c，如果c为0，则说明不存在重入了，
+        // 那么锁的状态为空闲 (state=0)，否则仅更新锁的状态量，不释放锁。
         @ReservedStackAccess
         protected final boolean tryRelease(int releases) {
             // 计算应该剩余的许可证数量
@@ -880,6 +901,7 @@ public class ReentrantLock implements Lock, Serializable {
      * 如果线程T进入了抢锁状态，则需要检查当前锁的占有者是谁
      * 如果当前锁的占有者就是线程T，则本次抢锁成功，否则，抢锁失败
      */
+    // 无论CLH队列是否有节点，当前线程都要和队列头节点去竞争一下锁，若竞争到锁，则该线程去持有锁，若没有竞争到锁，则放入到CLH队列尾部
     static final class NonfairSync extends Sync {
         private static final long serialVersionUID = 7316153563782823691L;
         
@@ -903,6 +925,7 @@ public class ReentrantLock implements Lock, Serializable {
      * 如果线程T进入了抢锁状态，则需要检查当前锁的占有者是谁
      * 如果当前锁的占有者就是线程T，则本次抢锁成功，否则，抢锁失败
      */
+    // 无论CLH队列是否有节点，当前线程是放到队列尾部
     static final class FairSync extends Sync {
         private static final long serialVersionUID = -3000897897090466540L;
         

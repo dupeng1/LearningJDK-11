@@ -178,6 +178,19 @@ import java.util.concurrent.TimeUnit;
  * @since 1.5
  */
 // 条件对象接口，用于更精细地指导线程的同步行为
+// 1、await()、signal()方法分别对应之前的Object的wait()和notify()
+// 2、Condition在调用之前必须获取锁，调用await方法后，当前线程会释放锁并在此等待，而其他线程调用Condition对象的signal方法，通知当前线程，当前线程
+// 才从await方法返回，并且在返回前已经获取了锁
+// 3、Condition依赖于Lock接口，生成一个Condition的基本代码是lock.newCondition()
+// 调用Condition的await()和signal()方法，都必须在lock保护之内，就是说必须在lock.lock()和lock.unlock之间才可以使用
+//　Conditon中的await()对应Object的wait()，Condition中的signal()对应Object的notify()，Condition中的signalAll()对应Object的notifyAll()
+// 4、等待队列是一个FIFO队列，在队列中的每个节点包含一个线程引用，该线程就是在Condition对象上等待的线程，
+// 如果一个线程调用了Condition.await方法，那么该线程将会释放锁，构造成节点并加入等待队列进入等待状态。
+// 一个Condition包含一个等待队列，Condition对象拥有首节点和尾节点的引用。当前线程调用await方法，将会构造节点并加入到等待队列尾部。
+// 5、Condition的执行方式，是当在线程Consumer中调用await方法后，线程Consumer将释放锁，并且将自己沉睡，等待唤醒，
+// 线程Producer获取到锁后，开始做事，完毕后，调用Condition的signalall方法，唤醒线程Consumer，线程Consumer恢复执行，
+// 说明Condition是一个多线程间协调通信的工具类，使得某个，或者某些线程一起等待某个条件（Condition）,
+// 只有当该条件具备( signal 或者 signalAll方法被带调用)时，这些等待线程才会被唤醒，从而重新争夺锁。
 public interface Condition {
     
     /**
@@ -215,6 +228,12 @@ public interface Condition {
      * implementation must document that fact.
      */
     // 使当前活跃的线程暂时陷入阻塞，允许阻塞带有中断标记的线程
+
+    // 不会在等待过程中响应中断
+
+    // 调用该方法的前提是，当前线程已经成功获得与该条件对象绑定的重入锁，否则调用该方法时会抛出IllegalMonitorStateException。
+    // 调用该方法后，结束等待的唯一方法是其它线程调用该条件对象的signal()或signalALL()方法。
+    // 等待过程中如果当前线程被中断，该方法仍然会继续等待，同时保留该线程的中断状态。
     void awaitUninterruptibly();
     
     /**
@@ -268,6 +287,11 @@ public interface Condition {
      *                              (and interruption of thread suspension is supported)
      */
     // 使当前活跃的线程暂时陷入阻塞，禁止阻塞带有中断标记的线程
+
+    // 当前线程等待同时释放锁
+
+    // 使当前线程加入 await() 等待队列中，并释放当锁，当其他线程调用signal()会重新请求锁。与Object.wait()类似。
+    // 当前线程进入等待状态直到被通知signal或中断，当前线程将进入运行状态且从await方法返回的情况
     void await() throws InterruptedException;
     
     /**
@@ -364,6 +388,10 @@ public interface Condition {
      *                              (and interruption of thread suspension is supported)
      */
     // 使当前活跃的线程暂时陷入阻塞，禁止阻塞带有中断标记的线程，nanosTimeout为相对时间，用于设置超时
+
+    // 调用该方法的前提是，当前线程已经成功获得与该条件对象绑定的重入锁，否则调用该方法时会抛出IllegalMonitorStateException。
+    // nanosTimeout指定该方法等待信号的的最大时间（单位为纳秒）。若指定时间内收到signal()或signalALL()则返回nanosTimeout减去已经等待的时间；
+    // 若指定时间内有其它线程中断该线程，则抛出InterruptedException并清除当前线程的打断状态；若指定时间内未收到通知，则返回0或负数。
     long awaitNanos(long nanosTimeout) throws InterruptedException;
     
     /**
@@ -382,6 +410,8 @@ public interface Condition {
      *                              (and interruption of thread suspension is supported)
      */
     // 使当前活跃的线程暂时陷入阻塞，禁止阻塞带有中断标记的线程，time为相对时间，需经过unit处理，用于设置超时
+
+    // 与await()基本一致，唯一不同点在于，指定时间之内没有收到signal()或signalALL()信号或者线程中断时该方法会返回false;其它情况返回true。
     boolean await(long time, TimeUnit unit) throws InterruptedException;
     
     /**
@@ -481,6 +511,7 @@ public interface Condition {
      * IllegalMonitorStateException} will be thrown.
      */
     // 使一个被await()阻塞的线程重新投入运行
+    // 用于唤醒一个等待的线程
     void signal();
     
     /**
@@ -500,5 +531,6 @@ public interface Condition {
      * IllegalMonitorStateException} will be thrown.
      */
     // 使当前所有被await()阻塞的线程重新投入运行
+    // 用于唤醒所有等待的线程
     void signalAll();
 }

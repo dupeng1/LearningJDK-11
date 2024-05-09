@@ -302,6 +302,26 @@ import java.util.concurrent.TimeUnit;
  * @author Doug Lea
  */
 // 同步队列，是一个带头结点的双向链表，用于实现锁的语义
+// 1、AQS是一个用于构建锁和同步器的框架，许多同步器都可以通过AQS很容易并且高效地构造出来，例如ReentrantLock、ReentrantReadWriteLock、Semaphore
+// CountDownLatch、SynchronousQueue、FutureTask
+// 2、AQS解决了在实现同步器涉及的大量细节问题，例如等待线程采用FIFO队列操作顺序，在不同的同步器中还可以定义一些灵活的标准来判断某个线程是应该通过还是需要
+// 等待，基于AQS来构建同步器能带来许多好处，它不仅能极大地减少实现工作，而且也不处理在多个位置上发生的竞争问题
+// 3、大多数开发者都不会直接使用AQS，标准同步器类的集合能够满足绝大多数情况的需求。但如果能了解标准同步器类的实现方式，
+// 那么对于理解它们的工作原理是非常有帮助的。
+// 4、在基于AQS构建的同步器类中，最基本的操作包括各种形式的获取操作和释放操作。获取操作是一种依赖状态的操作，并且通常会阻塞。
+// 当使用锁或信号量时，“获取”操作的含义就很直观，即获取的是锁或者许可，并且调用者可能会一直等待直到同步器类处于可被获取的状态。
+// 在使用CountDownLatch时，“获取”操作意味着“等待并直到闭锁到达结束状态”，
+// 而在使用FutureTask时，则意味着“等待并直到任务已经完成”。
+// “释放”并不是一个可阻塞的操作，当执行“释放”操作时，所有在请求时被阻塞的线程都会开始执行。
+// 5、如果一个类想成为状态依赖的类，那么它必须拥有一些状态。AQS负责管理同步器类中的状态，它管理了一个整数状态信息，
+// 可以通过getstate，setState以及compareAndSetState等protected类型方法来进行操作。这个整数可以用于表示任意状态。
+// 例如，ReentrantLock用它来表示所有者线程已经重复获取该锁的次数，Semaphore用它来表示剩余的许可数量，
+// FutureTask用它来表示任务的状态（尚未开始、正在运行、已完成以及已取消）。在同步器类中还可以自行管理一些额外的状态变量，
+// 例如，ReentrantLock保存了锁的当前所有者的信息，这样就能区分某个获取操作是重人的还是竞争的。
+// 6、AQS里面最重要的就是两个操作和一个状态：获取操作（acquire）、释放操作（release）、同步状态（state）。
+// 两个操作通过各种条件限制，总共有8个重要的方法，6个获取方法，2个释放方法
+// 7、会把所有的请求线程构成一个CLH队列，当一个线程执行完毕（lock.unlock()）时会激活自己的后继节点，
+// 但正在执行的线程并不在队列中，而那些等待执行的线程全部处于阻塞状态
 public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchronizer implements Serializable {
     
     private static final long serialVersionUID = 7373984972572414691L;
@@ -318,18 +338,26 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * If head exists, its waitStatus is guaranteed not to be
      * CANCELLED.
      */
+    // 队列的头节点的指针。同步队列的头节点，头节点持有锁资源的节点
     private transient volatile Node head;   // 【|同步队列|】的头结点
     
     /**
      * Tail of the wait queue, lazily initialized.  Modified only via
      * method enq to add new wait node.
      */
+    // 队列的尾节点的指针。阻塞的尾节点，每个新的节点进来，都插入到最后，就形成了链表
     private transient volatile Node tail;   // 【|同步队列|】的尾结点
     
     /**
      * The synchronization state.
      */
-    // 重入锁计数/许可证数量，在不同的锁中，使用方式有所不同
+    // 【重入锁计数】/【许可证数量】，在不同的锁中，使用方式有所不同
+    // 1、同步器的状态，可以理解为资源的状态，
+    // 以ReentrantLock为例，state的初始值为0，表明此时没有线程在使用资源，
+    // 此时如果某个线程t尝试获取锁，那么他可以成功获取，并将state修改为1，表明此时有1个线程在访问资源，
+    // 那么其他线程尝试获取锁的时候，发现state状态为1，就会加入到同步队列中然后阻塞，
+    // 当然线程t可以重复获取锁（不然ReentrantLock怎么叫可重入锁?），并且每次重复获取锁都会将state加1。
+    // 而每次当线程t释放锁的时候，会将state减1，这样当线程 t 完全释放完锁之后，state又恢复为0。
     private volatile int state;
     
     // VarHandle mechanics
@@ -385,6 +413,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      *            can represent anything you like.
      */
     // 申请独占锁，允许阻塞带有中断标记的线程（会先将其标记清除）
+    // 1、独占模式的获取，忽略中断
     public final void acquire(int arg) {
         // 尝试申请独占锁
         if(!tryAcquire(arg)){
@@ -397,6 +426,9 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
             Node node = addWaiter(Node.EXCLUSIVE);
             
             // 当node进入排队后再次尝试申请锁，如果还是失败，则可能进入阻塞
+
+            // 线程会在acquireQueued()方法内被阻塞，线程在该过程中被中断了，acquireQueued()方法会返回true
+            // 需要调用selfInterrupt()方法将中断补上
             if(acquireQueued(node, arg)){
                 // 如果线程解除阻塞时拥有中断标记，此处要进行设置
                 selfInterrupt();
@@ -433,6 +465,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @throws UnsupportedOperationException if exclusive mode is not supported
      */
     // 申请一次独占锁，具体的行为模式由子类实现
+    // 让线程尝试性地去获取一下锁
     protected boolean tryAcquire(int arg) {
         throw new UnsupportedOperationException();
     }
@@ -447,6 +480,17 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @return {@code true} if interrupted while waiting
      */
     // 当node进入排队后再次尝试申请锁，如果还是失败，则可能进入阻塞
+
+    // 一、该方法是一个死循环，在循环中，首先判断当前线程节点的前置节点p是否是头结点。
+    // 1、如果是则当前线程有一次通过调用tryAcquire()方法来获取锁的机会，为什么呢，因为此时可能p刚好释放完锁，
+    // 那么显然当前线程可以直接获取锁而不需要被阻塞，acquireQueued()方法会直接返回true
+    // 2、如果p不是头结点或者没能通过tryAcquire()获取锁，那么会进入下一个if判断
+
+    // 二、调用shouldParkAfterFailedAcquire方法判断线程在获取锁失败的情况下是否需要阻塞，如果需要，则线程会继续调用
+    // parkAndCheckInterrupt方法并在该方法中被阻塞。
+
+    // 三、如果在上述过程中任何一个地方抛出了异常，那么failed无法被设置为false，
+    // 则会在finally代码块中调用cancelAcquire将线程的waitStatus设置为CANCELLED。
     final boolean acquireQueued(final Node node, int arg) {
         
         // 记录当前线程从阻塞中醒来时的中断标记（阻塞(park)期间也可设置中断标记）
@@ -523,6 +567,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @throws InterruptedException if the current thread is interrupted
      */
     // 申请独占锁，不允许阻塞带有中断标记的线程
+    // 1、独占模式的获取，忽略中断
     public final void acquireInterruptibly(int arg) throws InterruptedException {
         // 测试当前线程是否已经中断，线程的中断状态会被清除
         if(Thread.interrupted()) {
@@ -600,6 +645,8 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @throws InterruptedException if the current thread is interrupted
      */
     // 申请独占锁，不允许阻塞带有中断标记的线程（一次失败后，带着超时标记继续申请）
+
+    // 独占模式的获取，可中断，并且有超时时间
     public final boolean tryAcquireNanos(int arg, long nanosTimeout) throws InterruptedException {
         // 测试当前线程是否已经中断，线程的中断状态会被清除
         if(Thread.interrupted()) {
@@ -708,6 +755,10 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @return the value returned from {@link #tryRelease}
      */
     // 释放锁，如果锁已被完全释放，则唤醒后续的阻塞线程。返回值表示本次操作后锁是否自由
+    // 独占模式的释放
+
+    // 尝试性释放锁，如果方法返回true，表明已经不存在重入，需要完全释放锁，那么会判断头结点（head）的状态，如果头结点的ws不为0，
+    // 则调用unparkSuccessor()方法唤醒头节点的后继节点。
     public final boolean release(int arg) {
         // 释放一次锁，返回值表示同步锁是否处于自由状态（无线程持有）
         if(tryRelease(arg)) {
@@ -776,6 +827,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      *            and can represent anything you like.
      */
     // 申请共享锁，允许阻塞带有中断标记的线程（会先将其标记清除）
+    // 共享模式的获取，忽略中断
     public final void acquireShared(int arg) {
         // 尝试申请锁，返回值<0说明刚才抢锁失败
         if(tryAcquireShared(arg)<0) {
@@ -897,6 +949,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @throws InterruptedException if the current thread is interrupted
      */
     // 申请共享锁，不允许阻塞带有中断标记的线程
+    // 共享模式的获取，可中断
     public final void acquireSharedInterruptibly(int arg) throws InterruptedException {
         // 测试当前线程是否已经中断，线程的中断状态会被清除
         if(Thread.interrupted()) {
@@ -973,6 +1026,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @throws InterruptedException if the current thread is interrupted
      */
     // 申请共享锁，不允许阻塞带有中断标记的线程（一次失败后，带着超时标记继续申请）
+    // 共享模式的获取，可中断，并且带有超时时间
     public final boolean tryAcquireSharedNanos(int arg, long nanosTimeout) throws InterruptedException {
         // 测试当前线程是否已经中断，线程的中断状态会被清除
         if(Thread.interrupted()) {
@@ -1082,6 +1136,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @return the value returned from {@link #tryReleaseShared}
      */
     // 释放锁，并唤醒排队的结点
+    // 共享模式的释放
     public final boolean releaseShared(int arg) {
         // 释放锁，即归还许可证
         if(tryReleaseShared(arg)) {
@@ -1345,6 +1400,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @since 1.7
      */
     // 判断【|同步队列|】的队头是否还有其他（非当前线程）的线程在排队，返回true代表有，反之则没有
+    // 1、判断同步队列中是否有线程等待的时间比当前线程更久，如果有返回true
     public final boolean hasQueuedPredecessors() {
         Node h, s;
         if((h = head) != null) {
@@ -1660,8 +1716,11 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
          * case the waitStatus can be transiently and harmlessly wrong).
          */
         // 使用尾插法将node添加到【|同步队列|】，并返回旧的队尾
+        // 将该节点加入同步队列尾部，等待队列的头结点线程安全的移动到同步队列，
         Node oldTail = enq(node);
         int ws = oldTail.waitStatus;
+        // 如果该节点处于取消或者被中断的状态，或者将该节点的状态以CAS操作设置为SINGAL失败，都会唤醒这个线程
+        // 当节点移动到同步队列后，当前线程的状态如果处于取消或者被中断的状态，或者更新该节点的状态失败则会唤醒这个线程。
         if(ws>0 || !oldTail.compareAndSetWaitStatus(ws, Node.SIGNAL)) {
             LockSupport.unpark(node.thread);
         }
@@ -1787,6 +1846,9 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * 由于有些结点可能会被标记为Node.CANCELLED（取消），
      * 所以这里的后继可能不是node.next，需要进一步搜索后才能确定
      */
+
+    // 一、锁的持有者在释放锁的时候，会将自身的ws设置为0，表明自身已经不是一个有效的节点了
+    // 二、寻找自己的下一个ws<=0的后继节点，将他唤醒
     private void unparkSuccessor(Node node) {
         /*
          * If status is negative (i.e., possibly needing signal) try to clear in anticipation of signalling.
@@ -1887,8 +1949,14 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * 由此，可创建[独占模式Node]或[共享模式Node]
      * 创建的[模式Node]会记下当前线程的引用，并进入同步队列进行排队
      */
+    // 用CAS操作来将node插入到队伍的结尾，如果CAS操作成功，则方法直接返回，如果CAS操作失败，则调用enq(node)
+    // 而enq(node)方法其实也是和addWaiter()同样逻辑的CAS操作，只不过CAS操作是放在一个死循环中，这样就能保证最后node总是能插入到队尾
+    // 其实在AQS的大量方法中都能看到这种将CAS操作放在循环中的做法
     private Node addWaiter(Node mode) {
         // 创建一个独占/共享模式的node，该node存储了当前线程的引用
+
+        // mode是用来标记该线程竞争的锁是共享锁还是独占锁。他只有两种取值
+        // 1. 独占锁：mode=Node.EXCLUSIVE。 2.共享锁：mode=Node.SHARED
         Node node = new Node(mode);
         
         // 使用尾插法将node添加到【|同步队列|】
@@ -1975,6 +2043,16 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * 每个正在活动的结点都将成为头结点，当活动的结点（头结点）执行完之后，
      * 需要根据自身上面的阻塞标记，以确定要不要唤醒后续的结点
      */
+
+    // 一、该方法会通过前置节点pred的状态(waitStatus)来判断当前节点是否需要被阻塞
+    // 二、如果ws>0，那么ws肯定为CANCELLED，那么当前节点node需要一直向前找到ws不为CANCELLED的节点，
+    // 然后将其设置为node的前置节点。即将node前面的ws为CANCELLED的节点都踢出队列。
+    // 三、ws为0或者PROPAGATE，PROPAGATE只有在共享锁的情况下才会出现，我们放在后面讲共享锁的时候再讲。ws为0有两种情况：
+    //      1、pred刚加入队列，ws初始状态为0。那么会通过CAS操作将pred的ws设置为SIGNAL，这样，shouldParkAfterFailedAcquire方法返回false，
+    // node不会被阻塞，会进入acquireQueued方法的下一次for循环，并再次进入shouldParkAfterFailedAcquire方法，
+    // 这一次node会发现pred的ws为SIGNAL，那么方法返回true，node会被阻塞。
+    //      2、pred节点刚释放完锁时，会将他的ws设置为0（后面讲锁释放的时候会细说）。意味着node的前置节点pred为head并且他刚释放完锁，
+    // 那么node会在下一次acquireQueued方法的for循环中调用tryAcquire方法并成功获取锁。
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
         // node前驱的状态
         int ws = pred.waitStatus;
@@ -2177,9 +2255,9 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
     // 【|同步队列|】或【|条件队列|】的结点
     static final class Node {
         /** Marker to indicate a node is waiting in shared mode */
-        static final Node SHARED = new Node();  // 【共享】模式
+        static final Node SHARED = new Node();  // 【共享】模式，标记节点为共享模式
         /** Marker to indicate a node is waiting in exclusive mode */
-        static final Node EXCLUSIVE = null;     // 【独占】模式
+        static final Node EXCLUSIVE = null;     // 【独占】模式，标记节点为独占模式
         
         /** waitStatus value to indicate thread has cancelled. */
         /*
@@ -2216,7 +2294,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
          * 反之，如果其后续结点需要经过阻塞，那么该标记会被修改为SIGNAL
          */
         static final int PROPAGATE = -3;
-        
+
         /**
          * Status field, taking on only the values:
          * SIGNAL:     The successor of this node is (or will soon be)
@@ -2252,8 +2330,18 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
          * (or when possible, unconditional volatile writes).
          */
         // 状态码，有CANCELLED/SIGNAL/CONDITION/PROPAGATE四种取值，默认为0
+        // 1、节点的状态
+        //      SIGNAL(-1): ：表示该节点的后继节点处于阻塞状态，当该节点释放锁(releases)或者取消获取锁(cancels)时，
+        // 需要唤醒他的后继节点。正常情况下，同步队列中的大部分节点的状态都为SIGNAL
+        //      CONDITION(-2)：表明该节点是在条件队列(condition queue)上等待，而不是同步队列。
+        // 由于AQS不仅可以用来当锁（替代synchronized关键字），还具有替代Object的wait/notify的功能，
+        // 如果一个线程调用了Condition.await()，该线程会加入到条件队列中（而不是同步队列），并将状态设置为CONDITION。
+        // 我们现在只需要知道线程如果只是调用锁的lock()和unlock()方法时，是不会进入CONDITION状态的。
+        //      PROPAGATE(-3): 共享模式下，由于可以有不只一个线程享用锁，前置节点不仅会唤醒他的后继节点，还可能会将唤醒操作进行“传播”，
+        // 也就是会唤醒后继节点的后继节点。关于共享锁也会在后面进行详细介绍。
+        //      CANCELLED(1)：很好理解，表明该节点被取消了，例如timeout会将节点状态置为CANCELLED。
         volatile int waitStatus;
-        
+
         /**
          * Link to predecessor node that current node/thread relies on
          * for checking waitStatus. Assigned during enqueuing, and nulled
@@ -2266,6 +2354,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
          * cancels itself, not any other node.
          */
         // 用于【|同步队列|】，表示排队结点的前驱，顺着前驱遍历可以跳过被取消的node线程
+        // 该节点的前置节点
         volatile Node prev;
         
         /**
@@ -2282,6 +2371,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
          * easier for isOnSyncQueue.
          */
         // 用于【|同步队列|】，表示排队结点的后继，顺着后继遍历可以找到陷入阻塞的node线程
+        // 该节点的后置节点
         volatile Node next;
         
         /**
@@ -2289,6 +2379,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
          * construction and nulled out after use.
          */
         // node内存储的线程引用，表面上是node在排队，实际上是thread在排队
+        // 该节点所代表的线程
         volatile Thread thread;
         
         /**
@@ -2307,6 +2398,10 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
          *
          * 用于【|条件队列|】时，该引用表示参与排队的下一个结点
          */
+        // 有两种含义
+        // 1. 当该节点处于同步队列时(AQS自己本身的CLH队列)，表明该节点是在竞争锁，如果是独占锁，那么nextWaiter=null，
+        // 如果是共享锁，那么nextWaiter=new Node()，也就是说，nextWaiter此时仅仅相当于一个flag，用来表明该锁是独占锁还是共享锁。
+        // 2. 当该节点处于条件队列时，nextWaiter指向他在队列中的后继节点。
         Node nextWaiter;
         
         // VarHandle mechanics
@@ -2516,6 +2611,13 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
          * 5.被signal()唤醒后，将排队的{条件node}移入【|同步队列|】，
          *   并恢复其许可证，让其继续执行...
          */
+
+        // 1、线程作为队列中的一个节点加入到等待队列中，同时会释放锁，当从await方法返回的时候，当前线程一定会获取condition相关联的锁
+        // 2、从队列（同步队列和等待队列）的角度来看await方法，调用await方法时，相当于【同步队列】的首节点移动到了【等待队列】中
+        // 3、调用该方法的线程成功获取锁的线程，也就是同步队列的首节点，该方法会将当前线程构造成节点并加入到等待队列中，然后释放同步状态，
+        // 唤醒同步队列中的后继节点，然后当前线程会进入等待状态。
+        // 4、当等待队列中的节点被唤醒的时候，则唤醒节点的线程开始尝试获取同步状态。如果不是通过其他线程调用Condition.signal()方法唤醒，
+        // 而是对等待线程进行中断，则会抛出InterruptedException异常信息。
         public final void await() throws InterruptedException {
             // 如果线程带有中断标记，则抛出异常
             if(Thread.interrupted()) {
@@ -2523,12 +2625,14 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
             }
             
             // 添加一个新的[条件Node](缓存了当前线程的引用)到【|条件队列|】，并返回刚添加的node
+            // 当前线程加入等待队列
             Node node = addConditionWaiter();
             
             /*
              * 针对独占锁，丢弃node所在线程持有的所有许可证（数量由savedState保存），并唤醒【|同步队列|】后续的阻塞线程
              * 这样一来，同步队列中排在首位的线程又可以开始抢锁了
              */
+            // 释放同步状态，也就是释放锁
             int savedState = fullyRelease(node);
             
             int interruptMode = 0;
@@ -2536,11 +2640,13 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
             // 判断node是否正位于【|同步队列|】中等待重新获取锁
             while(!isOnSyncQueue(node)) {
                 // 如果结点位于【|条件队列|】，则暂停运行，陷入阻塞
+                // 将当前线程阻塞
                 LockSupport.park(this);
                 
                 /* 从这里被signal()唤醒后，node已成为【|同步队列|】的首个结点（不是头结点），并准备去抢锁 */
                 
                 // 唤醒阻塞线程后，首先检查其当前是否有中断标记，如果有的话直接跳出循环
+                // 线程被唤醒后，查看线程是否取消或被中断，如果被取消或被中断，则跳出循环
                 if((interruptMode = checkInterruptWhileWaiting(node)) != 0) {
                     break;
                 }
@@ -2551,6 +2657,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
              * 而且，争锁时会携带之前保存的许可证数量
              * 争锁成功后，该结点会成为【|同步队列|】的头结点，并恢复运行
              */
+            // 线程以独占方式获取锁
             if(acquireQueued(node, savedState)) {
                 // 如果不需要抛异常，则修改标记为REINTERRUPT，代表稍后要恢复线程的中断状态
                 if(interruptMode != THROW_IE){
@@ -2851,9 +2958,10 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
             if(!isHeldExclusively()) {
                 throw new IllegalMonitorStateException();
             }
-            
+            // 取出等待队列的首节点
             Node first = firstWaiter;
             if(first != null) {
+                // 唤醒节点
                 doSignal(first);
             }
         }
@@ -2868,11 +2976,13 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
         private void doSignal(Node first) {
             do {
                 // 从【|条件队列|】中删除首结点
+                // 首节点引用后移
                 if((firstWaiter = first.nextWaiter) == null) {
                     lastWaiter = null;
                 }
                 
                 // 切断首结点与后续结点的关联
+                // 将首节点的nextWaiter指针置空
                 first.nextWaiter = null;
                 
                 /*

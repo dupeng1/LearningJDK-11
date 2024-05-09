@@ -184,6 +184,8 @@ public interface Lock {
      * {@code Lock} implementation.
      */
     // 申请锁，允许阻塞带有中断标记的线程（不一定成功）
+
+    // 获取锁，如果锁不可用，则出于线程调度的目的，当前线程将被禁用，并且在获取锁之前处于休眠状态。
     void lock();
     
     /**
@@ -263,6 +265,8 @@ public interface Lock {
      * {@code false} otherwise
      */
     // 申请锁，只申请一次，失败后不再尝试
+
+    // 如果锁可用立即返回true，如果锁不可用立即返回false，在拿不到锁的时候不会一直在那等待；
     boolean tryLock();
     
     /**
@@ -325,6 +329,14 @@ public interface Lock {
      *                              acquisition is supported)
      */
     // 申请锁，不允许阻塞带有中断标记的线程（一次失败后，带着超时标记继续申请）
+
+    // 和tryLock方法类似，只不过区别在于这个方法在拿不到锁时会等待一定时间，在时间期限之内如果还拿不到锁，就返回false，
+    // 如果一开始拿到锁或者在等待期间内拿到了锁，则返回true
+
+    // 如果锁可用，则此方法立即返回true。 如果该锁不可用，则当前线程将出于线程调度目的而被禁用并处于休眠状态，直到发生以下三种情况之一为止：
+    // ①当前线程获取到该锁；
+    // ②当前线程被其他线程中断，并且支持中断获取锁；
+    // ③经过指定的等待时间如果获得了锁，则返回true，没获取到锁返回false。
     boolean tryLock(long time, TimeUnit unit) throws InterruptedException;
     
     /**
@@ -340,6 +352,8 @@ public interface Lock {
      * type must be documented by that {@code Lock} implementation.
      */
     // 释放锁
+
+    // 释放锁。释放锁的操作放在finally块中进行，以保证锁一定被被释放，防止死锁的发生。
     void unlock();
     
     /**

@@ -217,6 +217,17 @@ import jdk.internal.vm.annotation.ReservedStackAccess;
  * @since 1.5
  */
 // 读/写锁，多个线程可以同时读，但不能同时写
+
+// 读写锁，可以分别获取读锁或写锁。也就是说将数据的读写操作分开，分成2个锁来分配给线程，从而使得多个线程可以同时进行读操作。
+// 读锁使用共享模式；
+// 写锁使用独占模式；
+// 读锁可以在没有写锁的时候被多个线程同时持有，写锁是独占的。当有读锁时，写锁就不能获得；
+// 而当有写锁时，除了获得写锁的这个线程可以获得读锁外，其他线程不能获得读锁
+// writeLock()：获取写锁。
+// readLock()：获取读锁。
+// 执行三个线程进行读写操作，并设置一个屏障，线程依次准备就绪后未获取锁之前都在等待，当第三个线程执行 cyclicBarrier.await();
+// 后屏障解除，三个线程同时执行。
+
 public class ReentrantReadWriteLock implements ReadWriteLock, Serializable {
     private static final long serialVersionUID = -6992448646407690164L;
     
