@@ -136,6 +136,10 @@ import java.util.concurrent.locks.ReentrantLock;
  * @since 1.5
  */
 // 循环栅栏，凑够一组线程后批量唤醒，下一组线程达到时可以重用此工具
+// 1、可以循环地实现线程要一起做任务的目标，不像CountDownLatch一样，仅仅支持一次线程与同步点阻塞的特性
+// 2、允许一组线程互相等待，直到达到某个公共屏障点，这些线程必须实时地互相等待
+// 3、多个线程之间互相等待，任何一个线程完成之前，所有的线程都必须等待，重点是多个线程之间任何一个线程没有完成任务，则所有线程都必须等待
+// 4、CountDownLatch使用情况是两个角色之间互相等待，而CyclicBarrier使用情况是同类互相等待
 public class CyclicBarrier {
     /** The lock for guarding barrier entry */
     // 线程争用的独占锁，只有上一个线程陷入阻塞，下一个线程才能争锁

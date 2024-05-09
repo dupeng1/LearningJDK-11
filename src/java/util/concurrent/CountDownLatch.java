@@ -164,6 +164,11 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  * 但是，必须等所有闸门都撤销后，所有等待的线程才能顺次被唤醒
  * 这个过程就像开闸放水一样...
  */
+// 1、控制线程执行任务的时机，使线程以组团方式一起执行任务
+// 2、提供的功能是判断count计数不为0时则当前线程呈wait状态，也就是在屏障处等待
+// 3、同步功能的辅助类，使用效果是给定一个计数，当使用这个CountDownLatch类的线程判断计数不为0，则呈现wait状态，如果为0则继续运行
+// 4、实现等待与继续运行的效果分别需要使用await()和countDown()方法来进行，await方法执行时判断计数是否为0，如果不为0则呈等待状态
+// 其他线程可以调用countDown方法将计数减1，当计数减到0时，呈等待的线程继续运行，而getCount()就是获得当前的计数个数
 public class CountDownLatch {
     private final Sync sync;
     
@@ -259,6 +264,7 @@ public class CountDownLatch {
      *                              while waiting
      */
     // 使线程陷入阻塞，不允许阻塞带有中断标记的线程（一次申请锁失败后，会带着超时标记重新申请）
+    // 使线程在指定最大时间单位内进入waiting状态，如果超过这个时间则自动唤醒，程序继续向下运行
     public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
         return sync.tryAcquireSharedNanos(1, unit.toNanos(timeout));
     }
@@ -286,6 +292,7 @@ public class CountDownLatch {
      * @return the current count
      */
     // 返回当前的闸门总数
+    // 当前计数的值
     public long getCount() {
         return sync.getCount();
     }

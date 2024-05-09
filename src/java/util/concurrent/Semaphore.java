@@ -169,6 +169,7 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  * 申请锁的过程，可以看做是借出许可证，线程拿到锁的控制权时，许可证总量会减少
  * 释放锁的过程，可以看做是归还许可证，线程丧失锁的控制权时，许可证总量会增加
  */
+// 此类有效对并发任务线程数量进行限制，这种功能可以应用在pool池技术中，可以设置同时访问pool池中数据的线程数量
 public class Semaphore implements Serializable {
     
     private static final long serialVersionUID = -3222578661600680210L;
@@ -188,6 +189,8 @@ public class Semaphore implements Serializable {
      *                This value may be negative, in which case releases
      *                must occur before any acquires will be granted.
      */
+    // permits是许可的意思，代表同一时间内，最多允许多少个线程同时执行acquire和release之间的代码
+    // permits并不是最终的许可数量，仅仅是初始的状态值
     public Semaphore(int permits) {
         sync = new NonfairSync(permits);
     }
@@ -233,6 +236,7 @@ public class Semaphore implements Serializable {
      * status will be set.
      */
     // 申请共享锁，允许阻塞带有中断标记的线程（会先将其标记清除）
+    // 使等待进入acquireUninterruptibly方法的线程，不允许被中断
     public void acquireUninterruptibly() {
         // 借出一张许可证
         sync.acquireShared(1);
@@ -264,6 +268,7 @@ public class Semaphore implements Serializable {
      * @throws IllegalArgumentException if {@code permits} is negative
      */
     // 申请共享锁，允许阻塞带有中断标记的线程（会先将其标记清除）
+    // 等待许可的情况下不允许中断，如果成功获得锁，则取得指定的permits许可个数
     public void acquireUninterruptibly(int permits) {
         if(permits<0) {
             throw new IllegalArgumentException();
@@ -301,6 +306,7 @@ public class Semaphore implements Serializable {
      * @throws InterruptedException if the current thread is interrupted
      */
     // 申请共享锁，不允许阻塞带有中断标记的线程
+    // 使用1个许可，是减法操作
     public void acquire() throws InterruptedException {
         // 借出一张许可证
         sync.acquireSharedInterruptibly(1);
@@ -346,6 +352,7 @@ public class Semaphore implements Serializable {
      * @throws IllegalArgumentException if {@code permits} is negative
      */
     // 申请共享锁，不允许阻塞带有中断标记的线程
+    // 每调用1次此方法，就使用x个许可
     public void acquire(int permits) throws InterruptedException {
         if(permits<0) {
             throw new IllegalArgumentException();
@@ -398,6 +405,7 @@ public class Semaphore implements Serializable {
      * @throws InterruptedException if the current thread is interrupted
      */
     // 申请共享锁，不允许阻塞带有中断标记的线程（一次失败后，带着超时标记继续申请）
+    // 在指定的时间内尝试地获得1个许可，如果获取不到则返回false
     public boolean tryAcquire(long timeout, TimeUnit unit) throws InterruptedException {
         // 借出一张许可证
         return sync.tryAcquireSharedNanos(1, unit.toNanos(timeout));
@@ -456,6 +464,7 @@ public class Semaphore implements Serializable {
      * @throws IllegalArgumentException if {@code permits} is negative
      */
     // 申请共享锁，不允许阻塞带有中断标记的线程（一次失败后，带着超时标记继续申请）
+    // 在指定的时间内尝试地获得x个许可，如果获取不到则返回false
     public boolean tryAcquire(int permits, long timeout, TimeUnit unit) throws InterruptedException {
         if(permits<0) {
             throw new IllegalArgumentException();
@@ -489,6 +498,8 @@ public class Semaphore implements Serializable {
      * otherwise
      */
     // 申请一次非公平锁
+    // 尝试获得1个许可，如果获取不到则返回false，通常与if语句结合使用，其具有无阻塞的特点，无阻塞的特点可以使线程不至于在同步处一直
+    // 持续等待的状态
     public boolean tryAcquire() {
         // 借出一张许可证
         return sync.nonfairTryAcquireShared(1) >= 0;
@@ -524,6 +535,7 @@ public class Semaphore implements Serializable {
      * @throws IllegalArgumentException if {@code permits} is negative
      */
     // 申请一次非公平锁
+    // 尝试获得x个许可，如果获取不到则返回false
     public boolean tryAcquire(int permits) {
         if(permits<0) {
             throw new IllegalArgumentException();
@@ -594,6 +606,9 @@ public class Semaphore implements Serializable {
      * @return {@code true} if this semaphore has fairness set true
      */
     // 判断当前线程持有的锁是否为公平锁
+    // 获得许可的顺序与线程启动的顺序有关，这时信号量就要分为公平与非公平
+    // 公平信号量是获得锁的顺序与线程启动顺序有关，先启动的线程优先获得许可
+    // 非公平信号量是获得锁的顺序与线程启动顺序无关
     public boolean isFair() {
         return sync instanceof FairSync;
     }
@@ -609,6 +624,7 @@ public class Semaphore implements Serializable {
      * acquire the lock
      */
     // 判断【|同步队列|】中是否存在排队的结点（线程）
+    // 判断有没有线程在等待这个许可
     public final boolean hasQueuedThreads() {
         return sync.hasQueuedThreads();
     }
@@ -623,6 +639,7 @@ public class Semaphore implements Serializable {
      * @return the estimated number of threads waiting for this lock
      */
     // 获取【|同步队列|】中排队的结点数量
+    // 获取等待许可的线程个数
     public final int getQueueLength() {
         return sync.getQueueLength();
     }
@@ -635,6 +652,7 @@ public class Semaphore implements Serializable {
      * @return the number of permits available in this semaphore
      */
     // 获取剩余可用的许可证数量
+    // 返回信号量当前可用的许可数，此方法通常用于调试，因为许可的数量有可能实时在改变，并不是固定的数量
     public int availablePermits() {
         return sync.getPermits();
     }
@@ -648,6 +666,7 @@ public class Semaphore implements Serializable {
      * number released
      */
     // 清空当前可用的许可证数量
+    // 获取并返回立即可用的所有许可数，并且将可用许可置为0
     public int drainPermits() {
         return sync.drainPermits();
     }

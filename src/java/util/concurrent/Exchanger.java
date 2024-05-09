@@ -110,6 +110,7 @@ import java.util.concurrent.locks.LockSupport;
  * 然后等待执行慢的线程从交换槽拿走数据，并将自己的数据也放入交换槽，
  * 最后，那个执行快的线程取出交换槽中的数据，这样，成对的线程就完成了数据交换。
  */
+// 使2个线程之间传输数据，比生产者/消费者模式使用的wait/notify要更加方便
 public class Exchanger<V> {
     
     /*
@@ -398,6 +399,7 @@ public class Exchanger<V> {
      *                              interrupted while waiting
      */
     // 交换数据
+    // 此方法被调用后等待其他线程来取得数据，如果没有其他线程取得数据，则一直阻塞等待
     @SuppressWarnings("unchecked")
     public V exchange(V x) throws InterruptedException {
         Object v;
@@ -458,6 +460,7 @@ public class Exchanger<V> {
      *                              before another thread enters the exchange
      */
     // 交换数据，限制在指定时间内完成
+    // 在指定时间内没有其他线程获取数据，则出现超时异常
     @SuppressWarnings("unchecked")
     public V exchange(V x, long timeout, TimeUnit unit) throws InterruptedException, TimeoutException {
         Object v;
